@@ -3,6 +3,7 @@ import { supabase, type Match, type Prediction, type RoundGoal, ROUND_LABELS, ty
 import { useAuth } from '../hooks/useAuth';
 import { MatchCard } from './MatchCard';
 import { RoundGoalForm } from './RoundGoalForm';
+import { PlayerPredictionHistory } from './PlayerPredictionHistory';
 import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users } from 'lucide-react';
 
 const ROUNDS: MatchRound[] = [
@@ -40,6 +41,14 @@ const ROUND_MULTIPLIERS: Record<MatchRound, number> = {
   third_place: 1,
   final: 2,
 };
+
+interface LeaderboardEntry {
+  user_id: string;
+  total_match_points: number;
+  total_round_goal_points: number;
+  exact_score_bonuses: number;
+  profiles: { display_name: string } | null;
+}
 
 export function Dashboard() {
   const { user, profile, signOut } = useAuth();
@@ -349,16 +358,9 @@ export function Dashboard() {
 }
 
 function Leaderboard() {
-  interface LeaderboardEntry {
-    user_id: string;
-    total_match_points: number;
-    total_round_goal_points: number;
-    exact_score_bonuses: number;
-    profiles: { display_name: string } | null;
-  }
-
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const { user } = useAuth();
 
   const totalPoints = useCallback((entry: LeaderboardEntry) =>
@@ -425,9 +427,20 @@ function Leaderboard() {
           </div>
           Global Leaderboard
         </h2>
-        <div className="flex items-center gap-2 text-sm text-white/50">
-          <Users className="w-4 h-4" />
-          {entries.length} players
+        <div className="flex items-center gap-3">
+          {entries.find((entry) => entry.user_id === user?.id) && (
+            <button
+              type="button"
+              onClick={() => setSelectedPlayer(entries.find((entry) => entry.user_id === user?.id) ?? null)}
+              className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
+            >
+              My picks
+            </button>
+          )}
+          <div className="hidden items-center gap-2 text-sm text-white/50 sm:flex">
+            <Users className="w-4 h-4" />
+            {entries.length} players
+          </div>
         </div>
       </div>
 
@@ -455,7 +468,13 @@ function Leaderboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-amber-300/70 text-sm font-medium mb-1">Current Leader</p>
-                  <p className="text-2xl font-bold text-white">{profileName(entries[0])}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlayer(entries[0])}
+                    className="text-left text-2xl font-bold text-white hover:text-emerald-300"
+                  >
+                    {profileName(entries[0])}
+                  </button>
                   <div className="flex items-center gap-4 mt-2">
                     <div className="flex items-center gap-1.5 text-emerald-400">
                       <TrendingUp className="w-4 h-4" />
@@ -525,9 +544,13 @@ function Leaderboard() {
                         {profileName(entry)[0]?.toUpperCase() || '?'}
                       </div>
                       <div>
-                        <span className={`font-semibold ${isCurrentUser ? 'text-emerald-400' : 'text-white'}`}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlayer(entry)}
+                          className={`font-semibold hover:text-emerald-300 ${isCurrentUser ? 'text-emerald-400' : 'text-white'}`}
+                        >
                           {profileName(entry)}
-                        </span>
+                        </button>
                         {isCurrentUser && (
                           <span className="ml-2 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                             You
@@ -567,6 +590,15 @@ function Leaderboard() {
             </div>
           </div>
         </>
+      )}
+
+      {selectedPlayer && (
+        <PlayerPredictionHistory
+          userId={selectedPlayer.user_id}
+          displayName={profileName(selectedPlayer)}
+          isCurrentUser={selectedPlayer.user_id === user?.id}
+          onClose={() => setSelectedPlayer(null)}
+        />
       )}
     </div>
   );

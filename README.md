@@ -118,6 +118,8 @@ refreshes are deterministic and cannot count a result twice.
 
 - Users can read matches and leaderboard totals.
 - Users can read and edit only their own predictions.
+- Other players' predictions are exposed through a protected database function
+  only after the relevant match or round has started, preventing copied picks.
 - Database triggers reject predictions after kickoff.
 - Calculated points, match results, and leaderboard totals are server-owned.
 - User profiles and score rows are created by an `auth.users` trigger.
