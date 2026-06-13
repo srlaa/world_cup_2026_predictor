@@ -3,7 +3,7 @@ import { supabase, type Match, type Prediction, type RoundGoal, ROUND_LABELS, ty
 import { useAuth } from '../hooks/useAuth';
 import { MatchCard } from './MatchCard';
 import { RoundGoalForm } from './RoundGoalForm';
-import { Trophy, Target, LogOut, Loader2, RefreshCw, Flame, Zap, Medal, Crown, ChevronRight, Activity, Calendar, TrendingUp, Users, Database, Wifi } from 'lucide-react';
+import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users } from 'lucide-react';
 
 const ROUNDS: MatchRound[] = [
   'group_round_1',
@@ -17,68 +17,87 @@ const ROUNDS: MatchRound[] = [
   'final',
 ];
 
+const BOOST_LIMITS: Record<MatchRound, number> = {
+  group_round_1: 6,
+  group_round_2: 6,
+  group_round_3: 6,
+  round_of_32: 4,
+  round_of_16: 2,
+  quarter_finals: 1,
+  semi_finals: 0,
+  third_place: 0,
+  final: 0,
+};
+
+const ROUND_MULTIPLIERS: Record<MatchRound, number> = {
+  group_round_1: 1,
+  group_round_2: 1,
+  group_round_3: 1,
+  round_of_32: 1,
+  round_of_16: 1,
+  quarter_finals: 1.5,
+  semi_finals: 2,
+  third_place: 1,
+  final: 2,
+};
+
 export function Dashboard() {
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<MatchRound>('group_round_1');
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Record<string, Prediction>>({});
   const [roundGoalPrediction, setRoundGoalPrediction] = useState<RoundGoal | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<'matches' | 'leaderboard'>('matches');
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [updating, setUpdating] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ totalPredictions: 0, liveMatches: 0, upcomingMatches: 0 });
-  const updateIntervalRef = useRef<number | null>(null);
+  const initialRoundSelected = useRef(false);
 
-  const triggerSync = useCallback(async () => {
-    setSyncing(true);
-    setSyncResult(null);
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const response = await fetch(`${supabaseUrl}/functions/v1/sync-matches`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${anonKey}`,
-          'apikey': anonKey,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setSyncResult({ success: true, message: data.message });
-      } else {
-        setSyncResult({ success: false, message: data.message || data.error || 'Sync failed' });
-      }
-      await fetchData(false);
-    } catch (error) {
-      console.error('Error triggering sync:', error);
-      setSyncResult({ success: false, message: 'Failed to connect to sync service' });
-    } finally {
-      setSyncing(false);
-    }
-  }, []);
+  useEffect(() => {
+    if (!user || initialRoundSelected.current) return;
+    initialRoundSelected.current = true;
+
+    const selectCurrentRound = async () => {
+      const { data } = await supabase
+        .from('matches')
+        .select('round, status, kickoff_at')
+        .in('status', ['live', 'scheduled'])
+        .order('kickoff_at', { ascending: true });
+
+      if (!data?.length) return;
+      const liveMatch = data.find((match) => match.status === 'live');
+      const nextMatch = data.find((match) => new Date(match.kickoff_at) > new Date());
+      const current = liveMatch ?? nextMatch ?? data[0];
+      setActiveTab(current.round as MatchRound);
+    };
+
+    void selectCurrentRound();
+  }, [user]);
 
   const fetchData = useCallback(async (showLoading = true) => {
+    if (!user) return;
     if (showLoading) setLoading(true);
+    setError(null);
     try {
-      const { data: matchesData } = await supabase
+      const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select('*')
         .eq('round', activeTab)
         .order('kickoff_at', { ascending: true });
+      if (matchesError) throw matchesError;
 
       if (matchesData) setMatches(matchesData);
 
-      const { data: allMatches } = await supabase
+      const { data: allMatches, error: allMatchesError } = await supabase
         .from('matches')
         .select('status');
+      if (allMatchesError) throw allMatchesError;
 
-      const { data: predictionsData } = await supabase
+      const { data: predictionsData, error: predictionsError } = await supabase
         .from('predictions')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.id);
+      if (predictionsError) throw predictionsError;
 
       if (predictionsData) {
         const predMap: Record<string, Prediction> = {};
@@ -96,55 +115,28 @@ export function Dashboard() {
         }
       }
 
-      const { data: roundGoalData } = await supabase
+      const { data: roundGoalData, error: roundGoalError } = await supabase
         .from('round_goals')
         .select('*')
+        .eq('user_id', user.id)
         .eq('round', activeTab)
         .maybeSingle();
+      if (roundGoalError) throw roundGoalError;
 
       setRoundGoalPrediction(roundGoalData);
-      setLastUpdate(new Date());
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch (fetchError) {
+      console.error('Error fetching data:', fetchError);
+      setError(fetchError instanceof Error ? fetchError.message : 'Could not load dashboard data');
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
-
-  const triggerScoreUpdate = useCallback(async () => {
-    setUpdating(true);
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      await fetch(`${supabaseUrl}/functions/v1/update-scores`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${anonKey}`,
-          'apikey': anonKey,
-        },
-      });
-      await fetchData(false);
-    } catch (error) {
-      console.error('Error triggering score update:', error);
-    } finally {
-      setUpdating(false);
-    }
-  }, [fetchData]);
+  }, [activeTab, user]);
 
   useEffect(() => {
     fetchData();
-
-    updateIntervalRef.current = window.setInterval(() => {
-      triggerScoreUpdate();
-    }, 30 * 60 * 1000);
-
-    return () => {
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current);
-      }
-    };
-  }, [fetchData, triggerScoreUpdate]);
+    const interval = window.setInterval(() => fetchData(false), 60_000);
+    return () => window.clearInterval(interval);
+  }, [fetchData]);
 
   return (
     <div className="min-h-screen bg-[#0a0f1a]">
@@ -157,20 +149,20 @@ export function Dashboard() {
       <header className="sticky top-0 z-50 bg-[#0a0f1a]/90 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-500" />
                 <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 flex items-center justify-center shadow-xl">
                   <Trophy className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <div>
+              <div className="hidden min-w-0 sm:block">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">World Cup 2026</h1>
                 <p className="text-xs text-emerald-400/80 font-medium tracking-wide">Predictor Challenge</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               <div className="hidden md:grid grid-cols-3 gap-3 mr-2">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10">
                   <Activity className="w-4 h-4 text-red-400 animate-pulse" />
@@ -189,7 +181,7 @@ export function Dashboard() {
               <div className="flex items-center gap-1 bg-[#1a2332] backdrop-blur-sm rounded-xl p-1 border border-white/5">
                 <button
                   onClick={() => setActiveView('matches')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                     activeView === 'matches'
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -200,7 +192,7 @@ export function Dashboard() {
                 </button>
                 <button
                   onClick={() => setActiveView('leaderboard')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                     activeView === 'leaderboard'
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -212,7 +204,7 @@ export function Dashboard() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-[#1a2332] to-[#141d2b] rounded-xl border border-white/10">
+                <div className="flex items-center gap-3 p-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-[#1a2332] to-[#141d2b] rounded-xl border border-white/10">
                   <div className="relative">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-400/20">
                       {profile?.display_name?.[0]?.toUpperCase() || 'U'}
@@ -224,27 +216,6 @@ export function Dashboard() {
                     <p className="text-xs text-white/50">Online</p>
                   </div>
                 </div>
-
-                <button
-                  onClick={triggerSync}
-                  disabled={syncing}
-                  className="p-2.5 text-white/60 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all duration-200 disabled:opacity-50 border border-white/5"
-                  title="Sync from API"
-                >
-                  <Database className={`w-5 h-5 ${syncing ? 'animate-pulse' : ''}`} />
-                </button>
-
-                <button
-                  onClick={() => {
-                    triggerScoreUpdate();
-                    fetchData();
-                  }}
-                  disabled={updating}
-                  className="p-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 disabled:opacity-50 border border-white/5"
-                  title="Refresh scores"
-                >
-                  <RefreshCw className={`w-5 h-5 ${updating ? 'animate-spin' : ''}`} />
-                </button>
 
                 <button
                   onClick={signOut}
@@ -259,20 +230,12 @@ export function Dashboard() {
         </div>
       </header>
 
-      {syncResult && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-xl animate-fadeIn ${
-          syncResult.success
-            ? 'bg-emerald-500/90 text-white'
-            : 'bg-red-500/90 text-white'
-        }`}>
-          <div className="flex items-center gap-2">
-            {syncResult.success ? <Wifi className="w-4 h-4" /> : <Database className="w-4 h-4" />}
-            <span className="text-sm font-medium">{syncResult.message}</span>
-          </div>
-        </div>
-      )}
-
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
         {activeView === 'matches' && (
           <>
             <div className="mb-8">
@@ -310,13 +273,32 @@ export function Dashboard() {
               </div>
             </div>
 
-            {activeTab !== 'group_round_1' && (
+            {matches.length > 0 && (
               <div className="mb-8 animate-fadeIn">
                 <RoundGoalForm
                   round={activeTab}
+                  roundStartAt={matches[0].kickoff_at}
                   existingPrediction={roundGoalPrediction || undefined}
                   onUpdate={fetchData}
                 />
+              </div>
+            )}
+
+            {matches.length > 0 && (BOOST_LIMITS[activeTab] > 0 || ROUND_MULTIPLIERS[activeTab] > 1) && (
+              <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3 text-sm text-white/70">
+                {BOOST_LIMITS[activeTab] > 0 && (
+                  <span className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 fill-orange-400 text-orange-300" />
+                    Fireballs x2: {Object.values(predictions).filter((prediction) =>
+                      prediction.boost_used && matches.some((match) => match.id === prediction.match_id)
+                    ).length}/{BOOST_LIMITS[activeTab]} used
+                  </span>
+                )}
+                {ROUND_MULTIPLIERS[activeTab] > 1 && (
+                  <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-300">
+                    Round outcome multiplier: x{ROUND_MULTIPLIERS[activeTab]}
+                  </span>
+                )}
               </div>
             )}
 
@@ -346,6 +328,11 @@ export function Dashboard() {
                     <MatchCard
                       match={match}
                       prediction={predictions[match.id]}
+                      boostLimit={BOOST_LIMITS[activeTab]}
+                      boostsUsed={Object.values(predictions).filter((prediction) =>
+                        prediction.boost_used && matches.some((roundMatch) => roundMatch.id === prediction.match_id)
+                      ).length}
+                      roundMultiplier={ROUND_MULTIPLIERS[activeTab]}
                       onUpdate={fetchData}
                     />
                   </div>
@@ -374,11 +361,16 @@ function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
+  const totalPoints = useCallback((entry: LeaderboardEntry) =>
+    Math.ceil(Number(entry.total_match_points || 0) + Number(entry.total_round_goal_points || 0)), []);
+
+  const profileName = (entry: LeaderboardEntry) => entry.profiles?.display_name || 'Unknown';
+
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
+        const { data, error: leaderboardError } = await supabase
           .from('user_scores')
           .select(`
             user_id,
@@ -388,8 +380,19 @@ function Leaderboard() {
             profiles ( display_name )
           `)
           .order('total_match_points', { ascending: false });
+        if (leaderboardError) throw leaderboardError;
 
-        if (data) setEntries(data as LeaderboardEntry[]);
+        if (data) {
+          const normalized: LeaderboardEntry[] = data.map((entry) => ({
+            user_id: entry.user_id,
+            total_match_points: Number(entry.total_match_points || 0),
+            total_round_goal_points: Number(entry.total_round_goal_points || 0),
+            exact_score_bonuses: Number(entry.exact_score_bonuses || 0),
+            profiles: Array.isArray(entry.profiles) ? entry.profiles[0] ?? null : entry.profiles,
+          }));
+          normalized.sort((a, b) => totalPoints(b) - totalPoints(a));
+          setEntries(normalized);
+        }
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
       } finally {
@@ -398,10 +401,7 @@ function Leaderboard() {
     };
 
     fetchLeaderboard();
-  }, []);
-
-  const totalPoints = (entry: LeaderboardEntry) =>
-    (entry.total_match_points || 0) + (entry.total_round_goal_points || 0);
+  }, [totalPoints]);
 
   if (loading) {
     return (
@@ -455,11 +455,11 @@ function Leaderboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-amber-300/70 text-sm font-medium mb-1">Current Leader</p>
-                  <p className="text-2xl font-bold text-white">{entries[0].profiles?.display_name || 'Unknown'}</p>
+                  <p className="text-2xl font-bold text-white">{profileName(entries[0])}</p>
                   <div className="flex items-center gap-4 mt-2">
                     <div className="flex items-center gap-1.5 text-emerald-400">
                       <TrendingUp className="w-4 h-4" />
-                      <span className="font-bold text-lg">{totalPoints(entries[0]).toFixed(1)}</span>
+                      <span className="font-bold text-lg">{totalPoints(entries[0])}</span>
                       <span className="text-sm text-white/40">pts</span>
                     </div>
                     {entries[0].exact_score_bonuses > 0 && (
@@ -522,11 +522,11 @@ function Leaderboard() {
                           ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 ring-2 ring-emerald-400/30 shadow-lg shadow-emerald-500/30'
                           : 'bg-gradient-to-br from-slate-600 to-slate-700'
                       } text-white`}>
-                        {entry.profiles?.display_name?.[0]?.toUpperCase() || '?'}
+                        {profileName(entry)[0]?.toUpperCase() || '?'}
                       </div>
                       <div>
                         <span className={`font-semibold ${isCurrentUser ? 'text-emerald-400' : 'text-white'}`}>
-                          {entry.profiles?.display_name || 'Unknown'}
+                          {profileName(entry)}
                         </span>
                         {isCurrentUser && (
                           <span className="ml-2 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
@@ -543,7 +543,7 @@ function Leaderboard() {
                     </div>
                     <div className="col-span-2 text-right">
                       <span className="text-white/80 font-medium">
-                        {Number(entry.total_match_points || 0).toFixed(1)}
+                        {Math.ceil(Number(entry.total_match_points || 0))}
                       </span>
                     </div>
                     <div className="col-span-2 text-right">
@@ -558,7 +558,7 @@ function Leaderboard() {
                         index === 2 ? 'text-amber-600' :
                         'text-emerald-400'
                       }`}>
-                        {total.toFixed(1)}
+                        {total}
                       </span>
                     </div>
                   </div>

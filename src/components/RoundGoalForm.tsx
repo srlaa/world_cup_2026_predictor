@@ -1,49 +1,44 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { supabase, ROUND_LABELS, type MatchRound, type RoundGoal } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { Target, Lock, Check, TrendingUp, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Target, Lock, Check, TrendingUp, Sparkles, ChevronDown } from 'lucide-react';
 
 interface RoundGoalFormProps {
   round: MatchRound;
+  roundStartAt: string;
   existingPrediction?: RoundGoal;
   onUpdate: () => void;
 }
 
-function isRoundLocked(round: MatchRound): boolean {
-  const roundStartDates: Record<MatchRound, string> = {
-    group_round_1: '2026-06-11T00:00:00Z',
-    group_round_2: '2026-06-17T00:00:00Z',
-    group_round_3: '2026-06-24T00:00:00Z',
-    round_of_32: '2026-07-03T00:00:00Z',
-    round_of_16: '2026-07-05T00:00:00Z',
-    quarter_finals: '2026-07-09T00:00:00Z',
-    semi_finals: '2026-07-13T00:00:00Z',
-    third_place: '2026-07-19T00:00:00Z',
-    final: '2026-07-19T00:00:00Z',
-  };
-
-  return new Date() >= new Date(roundStartDates[round]);
+function isRoundLocked(roundStartAt: string): boolean {
+  return new Date() >= new Date(roundStartAt);
 }
 
-export function RoundGoalForm({ round, existingPrediction, onUpdate }: RoundGoalFormProps) {
+export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdate }: RoundGoalFormProps) {
   const { user } = useAuth();
-  const [isLocked, setIsLocked] = useState(isRoundLocked(round));
+  const [isLocked, setIsLocked] = useState(isRoundLocked(roundStartAt));
   const [predictedGoals, setPredictedGoals] = useState(existingPrediction?.predicted_total_goals ?? 20);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkLock = () => setIsLocked(isRoundLocked(round));
+    const checkLock = () => setIsLocked(isRoundLocked(roundStartAt));
     checkLock();
     const interval = setInterval(checkLock, 60000);
     return () => clearInterval(interval);
-  }, [round]);
+  }, [roundStartAt]);
+
+  useEffect(() => {
+    setPredictedGoals(existingPrediction?.predicted_total_goals ?? 20);
+  }, [existingPrediction]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user || isLocked || saving) return;
 
     setSaving(true);
+    setError(null);
 
     try {
       if (existingPrediction) {
@@ -67,8 +62,9 @@ export function RoundGoalForm({ round, existingPrediction, onUpdate }: RoundGoal
 
       setShowForm(false);
       onUpdate();
-    } catch (error) {
-      console.error('Error saving round goal prediction:', error);
+    } catch (saveError) {
+      console.error('Error saving round goal prediction:', saveError);
+      setError(saveError instanceof Error ? saveError.message : 'Could not save round prediction');
     } finally {
       setSaving(false);
     }
@@ -206,6 +202,11 @@ export function RoundGoalForm({ round, existingPrediction, onUpdate }: RoundGoal
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+            {error}
+          </div>
+        )}
         <div>
           <label className="block text-sm text-white/70 mb-3">
             How many total goals will be scored in this round?

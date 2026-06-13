@@ -1,111 +1,52 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
-
 const FOOTBALL_API_BASE = 'https://api.football-data.org/v4';
-const FOOTBALL_API_TOKEN = 'c9567ef601374a77b2d9b00cc15acde5';
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+interface ApiMatch {
+  id: number;
+  status: string;
+  utcDate: string;
+  matchday: number | null;
+  stage: string;
+  homeTeam: { name: string | null } | null;
+  awayTeam: { name: string | null } | null;
+  score?: { fullTime?: { home: number | null; away: number | null } };
+}
 
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+interface ApiResponse {
+  matches?: ApiMatch[];
+}
 
-    // Fetch current World Cup matches from API
-    const response = await fetch(`${FOOTBALL_API_BASE}/competitions/WC/matches?season=2026`, {
-      headers: { 'X-Auth-Token': FOOTBALL_API_TOKEN }
-    });
+type MatchStatus = 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
+type MatchRound =
+  | 'group_round_1'
+  | 'group_round_2'
+  | 'group_round_3'
+  | 'round_of_32'
+  | 'round_of_16'
+  | 'quarter_finals'
+  | 'semi_finals'
+  | 'third_place'
+  | 'final';
 
-    const apiData = await response.json();
-    const apiMatches = apiData.matches || [];
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
-    // Build lookup map
-    const apiMatchMap = new Map();
-    for (const match of apiMatches) {
-      if (match.homeTeam?.name && match.awayTeam?.name) {
-        apiMatchMap.set(match.id.toString(), match);
-      }
-    }
+function isAuthorized(req: Request): boolean {
+  const expected = Deno.env.get('CRON_SECRET');
+  return Boolean(expected && req.headers.get('x-cron-secret') === expected);
+}
 
-    // Get all matches from database
-    const { data: dbMatches } = await supabase
-      .from('matches')
-      .select('id, api_match_id, home_team, away_team, status, home_score, away_score, odds_home, odds_draw, odds_away')
-      .in('status', ['scheduled', 'live']);
-
-    const updates: any[] = [];
-
-    for (const dbMatch of (dbMatches || [])) {
-      const apiMatch = apiMatchMap.get(dbMatch.api_match_id);
-      if (!apiMatch) continue;
-
-      const newStatus = mapStatus(apiMatch.status);
-      const newHomeScore = apiMatch.score?.fullTime?.home;
-      const newAwayScore = apiMatch.score?.fullTime?.away;
-
-      if (newStatus !== dbMatch.status || newHomeScore !== dbMatch.home_score || newAwayScore !== dbMatch.awayScore) {
-        updates.push({ dbMatch, newStatus, newHomeScore, newAwayScore });
-
-        await supabase
-          .from('matches')
-          .update({
-            status: newStatus,
-            home_score: newHomeScore,
-            away_score: newAwayScore,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', dbMatch.id);
-
-        // Calculate points if match just finished
-        if (newStatus === 'finished' && dbMatch.status !== 'finished' && newHomeScore !== null && newAwayScore !== null) {
-          await calculateMatchPoints(supabase, dbMatch.id, newHomeScore, newAwayScore, dbMatch.odds_home, dbMatch.odds_draw, dbMatch.odds_away);
-        }
-      }
-    }
-
-    await processRoundGoals(supabase);
-
-    const { data: stats } = await supabase
-      .from('matches')
-      .select('status')
-      .order('kickoff_at', { ascending: true });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        matchesUpdated: updates.length,
-        stats: {
-          total: stats?.length || 0,
-          scheduled: stats?.filter(m => m.status === 'scheduled').length || 0,
-          live: stats?.filter(m => m.status === 'live').length || 0,
-          finished: stats?.filter(m => m.status === 'finished').length || 0,
-        }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-});
-
-function mapStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+function mapStatus(status: string): MatchStatus {
   switch (status) {
     case 'IN_PLAY':
     case 'PAUSED':
+    case 'LIVE':
       return 'live';
     case 'FINISHED':
       return 'finished';
@@ -120,70 +61,144 @@ function mapStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postpon
   }
 }
 
-async function calculateMatchPoints(
-  supabase: any,
-  matchId: string,
-  homeScore: number,
-  awayScore: number,
-  oddsHome: number,
-  oddsDraw: number,
-  oddsAway: number
-) {
-  const actualOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
-  const oddsMap: Record<string, number> = { '1': oddsHome, 'X': oddsDraw, '2': oddsAway };
-
-  const { data: predictions } = await supabase
-    .from('predictions')
-    .select('*')
-    .eq('match_id', matchId);
-
-  for (const pred of (predictions || [])) {
-    const isOutcomeCorrect = pred.predicted_outcome === actualOutcome;
-    const isExactScoreCorrect = pred.predicted_home_score === homeScore && pred.predicted_away_score === awayScore;
-    const points = (isOutcomeCorrect ? oddsMap[pred.predicted_outcome] * 10 : 0) + (isExactScoreCorrect ? 50 : 0);
-
-    await supabase.from('predictions').update({
-      is_outcome_correct: isOutcomeCorrect,
-      is_exact_score_correct: isExactScoreCorrect,
-      points_awarded: points,
-    }).eq('id', pred.id);
-
-    const { data: score } = await supabase.from('user_scores').select('*').eq('user_id', pred.user_id).maybeSingle();
-    if (score) {
-      await supabase.from('user_scores').update({
-        total_match_points: Number(score.total_match_points || 0) + points,
-        exact_score_bonuses: isExactScoreCorrect ? score.exact_score_bonuses + 1 : score.exact_score_bonuses,
-        last_updated: new Date().toISOString()
-      }).eq('user_id', pred.user_id);
-    }
+function mapRound(matchday: number | null, stage: string): MatchRound {
+  const normalized = stage.toUpperCase();
+  if (normalized.includes('GROUP')) {
+    if (matchday === 2) return 'group_round_2';
+    if (matchday === 3) return 'group_round_3';
+    return 'group_round_1';
   }
+
+  const rounds: Record<string, MatchRound> = {
+    ROUND_OF_32: 'round_of_32',
+    LAST_32: 'round_of_32',
+    ROUND_OF_16: 'round_of_16',
+    LAST_16: 'round_of_16',
+    QUARTER_FINALS: 'quarter_finals',
+    SEMI_FINALS: 'semi_finals',
+    THIRD_PLACE: 'third_place',
+    FINAL: 'final',
+  };
+
+  return rounds[normalized] ?? 'group_round_1';
 }
 
-async function processRoundGoals(supabase: any) {
-  const rounds = ['group_round_1', 'group_round_2', 'group_round_3', 'round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'third_place', 'final'];
+Deno.serve(async (req: Request) => {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  if (!isAuthorized(req)) return json({ error: 'Unauthorized' }, 401);
 
-  for (const round of rounds) {
-    const { data: roundMatches } = await supabase.from('matches').select('status, home_score, away_score').eq('round', round);
-    if (!roundMatches?.length || !roundMatches.every(m => m.status === 'finished')) continue;
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const footballApiToken = Deno.env.get('FOOTBALL_API_TOKEN');
+  if (!supabaseUrl || !serviceRoleKey || !footballApiToken) {
+    return json({ error: 'Missing required server secrets' }, 500);
+  }
 
-    const totalGoals = roundMatches.reduce((sum, m) => sum + (m.home_score || 0) + (m.away_score || 0), 0);
-    const { data: predictions } = await supabase.from('round_goals').select('*').eq('round', round).is('actual_total_goals', null);
+  try {
+    const response = await fetch(`${FOOTBALL_API_BASE}/competitions/WC/matches?season=2026`, {
+      headers: { 'X-Auth-Token': footballApiToken },
+    });
+    if (!response.ok) {
+      const details = await response.text();
+      console.error('Football API score update failed', response.status, details);
+      return json({ error: 'Football API request failed', status: response.status }, 502);
+    }
 
-    for (const pred of (predictions || [])) {
-      const diff = Math.abs(pred.predicted_total_goals - totalGoals);
-      const points = Math.max(0, 100 - diff * 2);
+    const payload = await response.json() as ApiResponse;
+    const apiMatches = payload.matches ?? [];
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
-      await supabase.from('round_goals').update({
-        actual_total_goals: totalGoals,
-        points_awarded: points,
-      }).eq('id', pred.id);
+    const { data: existing, error: existingError } = await supabase
+      .from('matches')
+      .select('api_match_id')
+      .not('api_match_id', 'is', null);
+    if (existingError) throw existingError;
 
-      const { data: score } = await supabase.from('user_scores').select('*').eq('user_id', pred.user_id).maybeSingle();
-      if (score) {
-        await supabase.from('user_scores').update({
-          total_round_goal_points: Number(score.total_round_goal_points || 0) + points,
-        }).eq('user_id', pred.user_id);
+    const existingIds = new Set((existing ?? []).map((match) => match.api_match_id));
+    const newRows = apiMatches.flatMap((match) => {
+      const apiMatchId = String(match.id);
+      const homeTeam = match.homeTeam?.name;
+      const awayTeam = match.awayTeam?.name;
+      if (existingIds.has(apiMatchId) || !homeTeam || !awayTeam) return [];
+
+      return [{
+        api_match_id: apiMatchId,
+        home_team: homeTeam,
+        away_team: awayTeam,
+        kickoff_at: match.utcDate,
+        round: mapRound(match.matchday, match.stage),
+        status: mapStatus(match.status),
+        home_score: match.score?.fullTime?.home ?? null,
+        away_score: match.score?.fullTime?.away ?? null,
+        odds_home: 2,
+        odds_draw: 3,
+        odds_away: 2,
+        odds_source: 'pending_dynamic_model',
+        updated_at: new Date().toISOString(),
+      }];
+    });
+
+    if (newRows.length > 0) {
+      const { error: insertError } = await supabase.from('matches').insert(newRows);
+      if (insertError) throw insertError;
+
+      const { error: exactScoreError } = await supabase.rpc('refresh_exact_score_matches');
+      if (exactScoreError) throw exactScoreError;
+    }
+
+    let updated = 0;
+    for (const match of apiMatches) {
+      const { error } = await supabase
+        .from('matches')
+        .update({
+          kickoff_at: match.utcDate,
+          status: mapStatus(match.status),
+          home_score: match.score?.fullTime?.home ?? null,
+          away_score: match.score?.fullTime?.away ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('api_match_id', String(match.id));
+      if (error) throw error;
+      updated += 1;
+    }
+
+    const { error: oddsError } = await supabase.rpc('refresh_dynamic_model_odds');
+    if (oddsError) throw oddsError;
+
+    const { error: scoringError } = await supabase.rpc('recalculate_all_scores');
+    if (scoringError) throw scoringError;
+
+    let oddsRefresh: 'not_needed' | 'requested' | 'failed' = 'not_needed';
+    if (newRows.length > 0) {
+      try {
+        const oddsResponse = await fetch(`${supabaseUrl}/functions/v1/sync-odds`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cron-secret': Deno.env.get('CRON_SECRET') ?? '',
+          },
+          body: '{}',
+        });
+        oddsRefresh = oddsResponse.ok ? 'requested' : 'failed';
+        if (!oddsResponse.ok) {
+          console.error('Immediate odds refresh failed', oddsResponse.status, await oddsResponse.text());
+        }
+      } catch (oddsError) {
+        oddsRefresh = 'failed';
+        console.error('Immediate odds refresh failed', oddsError);
       }
     }
+
+    return json({
+      success: true,
+      processed: updated,
+      newMatches: newRows.length,
+      oddsRefresh,
+    });
+  } catch (error) {
+    console.error('update-scores failed', error);
+    return json({ error: error instanceof Error ? error.message : 'Unexpected update error' }, 500);
   }
-}
+});

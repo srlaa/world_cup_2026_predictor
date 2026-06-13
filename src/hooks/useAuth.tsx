@@ -64,30 +64,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     return { error };
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
+    const { error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
       password,
       options: {
-        data: { display_name: displayName }
+        data: { display_name: displayName.trim() },
+        emailRedirectTo: window.location.origin,
       }
     });
 
     if (error) return { error };
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({ id: data.user.id, display_name: displayName });
-
-      if (profileError) {
-        return { error: new Error('Failed to create profile') };
-      }
-    }
 
     return { error: null };
   };
@@ -106,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Context hooks intentionally live beside their provider to keep auth behavior cohesive.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

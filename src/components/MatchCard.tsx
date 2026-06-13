@@ -2,11 +2,14 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { supabase, type Match, type Prediction, ROUND_LABELS, type MatchRound } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getCountryFlag } from '../lib/countries';
-import { Clock, MapPin, Lock, Check, Trophy, Target, Zap, TrendingUp, ChevronDown, ChevronUp, Radio, Flag } from 'lucide-react';
+import { Clock, MapPin, Lock, Check, Target, Zap, TrendingUp, ChevronDown, ChevronUp, Radio, Flag, Flame } from 'lucide-react';
 
 interface MatchCardProps {
   match: Match;
   prediction?: Prediction;
+  boostLimit: number;
+  boostsUsed: number;
+  roundMultiplier: number;
   onUpdate: () => void;
 }
 
@@ -30,6 +33,19 @@ function calculateOutcome(homeScore: number | null, awayScore: number | null): '
   return 'X';
 }
 
+function outcomeFromPrediction(homeScore: number, awayScore: number): '1' | 'X' | '2' {
+  if (homeScore > awayScore) return '1';
+  if (homeScore < awayScore) return '2';
+  return 'X';
+}
+
+function scoreForOutcome(outcome: '1' | 'X' | '2', homeScore: number, awayScore: number): [number, number] {
+  if (outcome === '1' && homeScore <= awayScore) return [awayScore + 1, awayScore];
+  if (outcome === '2' && awayScore <= homeScore) return [homeScore, homeScore + 1];
+  if (outcome === 'X' && homeScore !== awayScore) return [Math.min(homeScore, awayScore), Math.min(homeScore, awayScore)];
+  return [homeScore, awayScore];
+}
+
 function formatTimeLeft(kickoffAt: string): string {
   const diff = new Date(kickoffAt).getTime() - Date.now();
   if (diff <= 0) return 'Started';
@@ -45,14 +61,25 @@ function formatTimeLeft(kickoffAt: string): string {
   return `${minutes}m`;
 }
 
-export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
+export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMultiplier, onUpdate }: MatchCardProps) {
   const { user } = useAuth();
   const [isLocked, setIsLocked] = useState(isMatchLocked(match.kickoff_at));
   const [editing, setEditing] = useState(false);
-  const [selectedOutcome, setSelectedOutcome] = useState<'1' | 'X' | '2'>(prediction?.predicted_outcome || '1');
+  const [selectedOutcome, setSelectedOutcome] = useState<'1' | 'X' | '2'>(
+    prediction?.predicted_outcome || (match.exact_score_enabled ? 'X' : '1'),
+  );
   const [homeScore, setHomeScore] = useState(prediction?.predicted_home_score ?? 0);
   const [awayScore, setAwayScore] = useState(prediction?.predicted_away_score ?? 0);
+  const [boostUsed, setBoostUsed] = useState(prediction?.boost_used ?? false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedOutcome(prediction?.predicted_outcome || (match.exact_score_enabled ? 'X' : '1'));
+    setHomeScore(prediction?.predicted_home_score ?? 0);
+    setAwayScore(prediction?.predicted_away_score ?? 0);
+    setBoostUsed(prediction?.boost_used ?? false);
+  }, [match.exact_score_enabled, prediction]);
 
   useEffect(() => {
     const checkLock = () => {
@@ -73,6 +100,7 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
     if (!user || isLocked || saving) return;
 
     setSaving(true);
+    setError(null);
 
     try {
       if (prediction) {
@@ -80,8 +108,9 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
           .from('predictions')
           .update({
             predicted_outcome: selectedOutcome,
-            predicted_home_score: homeScore,
-            predicted_away_score: awayScore,
+            predicted_home_score: match.exact_score_enabled ? homeScore : null,
+            predicted_away_score: match.exact_score_enabled ? awayScore : null,
+            boost_used: boostUsed,
           })
           .eq('id', prediction.id);
 
@@ -93,8 +122,9 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
             user_id: user.id,
             match_id: match.id,
             predicted_outcome: selectedOutcome,
-            predicted_home_score: homeScore,
-            predicted_away_score: awayScore,
+            predicted_home_score: match.exact_score_enabled ? homeScore : null,
+            predicted_away_score: match.exact_score_enabled ? awayScore : null,
+            boost_used: boostUsed,
           });
 
         if (error) throw error;
@@ -102,8 +132,9 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
 
       setEditing(false);
       onUpdate();
-    } catch (error) {
-      console.error('Error saving prediction:', error);
+    } catch (saveError) {
+      console.error('Error saving prediction:', saveError);
+      setError(saveError instanceof Error ? saveError.message : 'Could not save prediction');
     } finally {
       setSaving(false);
     }
@@ -137,6 +168,8 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
   const isFinished = match.status === 'finished';
   const homeFlag = getCountryFlag(match.home_team);
   const awayFlag = getCountryFlag(match.away_team);
+  const canEnableBoost = prediction?.boost_used || boostsUsed < boostLimit;
+  const outcomePoints = Math.ceil(oddsForOutcome(selectedOutcome) * 10 * roundMultiplier * (boostUsed ? 2 : 1));
 
   return (
     <div className={`group relative bg-gradient-to-b from-white/[0.07] to-white/[0.02] border rounded-2xl p-5 transition-all duration-500 hover:shadow-xl ${
@@ -158,7 +191,13 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
           {match.status === 'finished' && prediction && prediction.points_awarded > 0 && (
             <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
               <TrendingUp className="w-3 h-3" />
-              +{prediction.points_awarded} pts
+              +{Math.ceil(Number(prediction.points_awarded))} pts
+            </span>
+          )}
+          {prediction?.boost_used && (
+            <span className="flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-full bg-gradient-to-r from-orange-500/25 to-red-500/20 text-orange-300 border border-orange-400/30 shadow-sm shadow-orange-500/20">
+              <Flame className="w-3.5 h-3.5 fill-orange-400" />
+              x2
             </span>
           )}
         </div>
@@ -254,6 +293,12 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
         )}
       </div>
 
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
       {isLocked && !prediction && !isFinished && (
         <div className="flex items-center justify-center gap-2 py-4 bg-white/5 rounded-xl border border-white/10">
           <Lock className="w-4 h-4 text-white/40" />
@@ -263,7 +308,7 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
 
       {isFinished && prediction && (
         <div className="bg-gradient-to-b from-white/[0.06] to-transparent rounded-xl p-4 border border-white/10 mt-2">
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className={`grid gap-3 text-center ${match.exact_score_enabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <div>
               <p className="text-white/40 text-xs mb-1">Your Pick</p>
               <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${
@@ -273,15 +318,17 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
                 {prediction.is_outcome_correct && <Check className="w-4 h-4" />}
               </p>
             </div>
-            <div>
-              <p className="text-white/40 text-xs mb-1">Your Score</p>
-              <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${
-                prediction.is_exact_score_correct ? 'text-amber-400' : 'text-white/60'
-              }`}>
-                {prediction.predicted_home_score}:{prediction.predicted_away_score}
-                {prediction.is_exact_score_correct && <Zap className="w-3.5 h-3.5" />}
-              </p>
-            </div>
+            {match.exact_score_enabled && (
+              <div>
+                <p className="text-white/40 text-xs mb-1">Your Score</p>
+                <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${
+                  prediction.is_exact_score_correct ? 'text-amber-400' : 'text-white/60'
+                }`}>
+                  {prediction.predicted_home_score}:{prediction.predicted_away_score}
+                  {prediction.is_exact_score_correct && <Zap className="w-3.5 h-3.5" />}
+                </p>
+              </div>
+            )}
             <div>
               <p className="text-white/40 text-xs mb-1">Result</p>
               <p className="font-semibold text-sm text-white">
@@ -296,7 +343,7 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
                 pointsDisplay > 0 ? 'text-emerald-400' : 'text-white/40'
               }`}>
                 {pointsDisplay > 0 ? <TrendingUp className="w-4 h-4" /> : null}
-                +{pointsDisplay} pts
+                +{Math.ceil(Number(pointsDisplay))} pts
               </span>
             </div>
           )}
@@ -339,7 +386,14 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
                     <button
                       key={outcome}
                       type="button"
-                      onClick={() => setSelectedOutcome(outcome)}
+                      onClick={() => {
+                        setSelectedOutcome(outcome);
+                        if (match.exact_score_enabled) {
+                          const [nextHomeScore, nextAwayScore] = scoreForOutcome(outcome, homeScore, awayScore);
+                          setHomeScore(nextHomeScore);
+                          setAwayScore(nextAwayScore);
+                        }
+                      }}
                       className={`relative py-3 px-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
                         selectedOutcome === outcome
                           ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/40'
@@ -358,11 +412,46 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-white/50 mb-3 uppercase tracking-wider">
-                  Exact Score Prediction
-                </label>
-                <div className="flex items-center gap-3">
+              {boostLimit > 0 && (
+                <button
+                  type="button"
+                  onClick={() => canEnableBoost && setBoostUsed((current) => !current)}
+                  disabled={!boostUsed && !canEnableBoost}
+                  className={`group/boost relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-all ${
+                    boostUsed
+                      ? 'border-orange-400/60 bg-gradient-to-r from-orange-500/25 via-red-500/15 to-transparent text-orange-100 shadow-lg shadow-orange-500/15'
+                      : 'border-orange-500/20 bg-gradient-to-r from-orange-500/10 to-transparent text-white/70 hover:border-orange-400/40 hover:bg-orange-500/15 disabled:cursor-not-allowed disabled:opacity-40'
+                  }`}
+                >
+                  {boostUsed && <div className="absolute inset-0 bg-orange-400/5 animate-pulse" />}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`relative flex h-12 w-12 items-center justify-center rounded-full ${
+                        boostUsed ? 'bg-gradient-to-br from-yellow-300 via-orange-500 to-red-600' : 'bg-orange-500/15'
+                      }`}>
+                        <Flame className={`h-7 w-7 ${boostUsed ? 'fill-yellow-200 text-white' : 'text-orange-400'}`} />
+                        <span className="absolute -bottom-1 -right-1 rounded-full bg-[#0a0f1a] px-1.5 py-0.5 text-[10px] font-black text-orange-300 ring-1 ring-orange-400/40">x2</span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-orange-200">Fireball x2</p>
+                        <p className="text-xs opacity-70">Doubles points for a correct match outcome</p>
+                      </div>
+                    </div>
+                    <span className="relative rounded-full bg-black/20 px-3 py-1 text-xs font-bold text-orange-200">
+                      {Math.max(0, boostLimit - boostsUsed)} left
+                    </span>
+                  </div>
+                </button>
+              )}
+
+              {match.exact_score_enabled && (
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">
+                    Exact Score Prediction
+                  </label>
+                  </div>
+                  <div className="flex items-center gap-3">
                   <div className="flex-1 text-center">
                     <div className="text-3xl mb-2">{homeFlag}</div>
                     <input
@@ -370,7 +459,11 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
                       min="0"
                       max="15"
                       value={homeScore}
-                      onChange={(e) => setHomeScore(parseInt(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const score = parseInt(e.target.value) || 0;
+                        setHomeScore(score);
+                        setSelectedOutcome(outcomeFromPrediction(score, awayScore));
+                      }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
                     />
                     <p className="text-[10px] text-white/40 mt-1.5 truncate">{match.home_team}</p>
@@ -383,23 +476,28 @@ export function MatchCard({ match, prediction, onUpdate }: MatchCardProps) {
                       min="0"
                       max="15"
                       value={awayScore}
-                      onChange={(e) => setAwayScore(parseInt(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const score = parseInt(e.target.value) || 0;
+                        setAwayScore(score);
+                        setSelectedOutcome(outcomeFromPrediction(homeScore, score));
+                      }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
                     />
                     <p className="text-[10px] text-white/40 mt-1.5 truncate">{match.away_team}</p>
                   </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="bg-gradient-to-r from-amber-500/10 to-transparent rounded-xl p-4 border border-amber-500/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-white/50 mb-1">Potential winnings</p>
+                    <p className="text-xs text-white/50 mb-1">Potential outcome points</p>
                     <p className="text-amber-400 font-bold text-lg">
-                      {(oddsForOutcome(selectedOutcome) * 10).toFixed(1)} pts
+                      {outcomePoints} pts
                     </p>
                   </div>
-                  {selectedOutcome === (
+                  {match.exact_score_enabled && selectedOutcome === (
                     homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
                   ) && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 rounded-lg">

@@ -128,6 +128,9 @@ export const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 export function getCountryFlag(teamName: string): string {
+  if (teamName === 'Scotland') {
+    return '\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}';
+  }
   return COUNTRY_FLAGS[teamName] || '⚽';
 }
 

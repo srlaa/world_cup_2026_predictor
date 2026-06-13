@@ -1,0 +1,63 @@
+-- Run this in the Supabase SQL editor after replacing the three placeholders.
+-- It stores secrets in Vault and schedules server-to-server Edge Function calls.
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+create extension if not exists supabase_vault;
+
+select vault.create_secret('https://YOUR_PROJECT_REF.supabase.co', 'project_url');
+select vault.create_secret('YOUR_ANON_KEY', 'anon_key');
+select vault.create_secret('YOUR_LONG_RANDOM_CRON_SECRET', 'cron_secret');
+
+select cron.schedule(
+  'sync-world-cup-matches',
+  '17 3 * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url')
+      || '/functions/v1/sync-matches',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'anon_key'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+
+select cron.schedule(
+  'update-world-cup-scores',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url')
+      || '/functions/v1/update-scores',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'anon_key'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+
+-- One EU region and one h2h market cost one credit per run. Every six hours
+-- uses about 120 of the free 500 monthly credits.
+select cron.schedule(
+  'sync-world-cup-odds',
+  '23 */6 * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url')
+      || '/functions/v1/sync-odds',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'anon_key'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);

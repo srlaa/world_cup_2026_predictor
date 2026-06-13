@@ -29,6 +29,9 @@ export type Match = {
   odds_home: number;
   odds_draw: number;
   odds_away: number;
+  odds_source: string;
+  odds_updated_at: string | null;
+  exact_score_enabled: boolean;
   venue: string | null;
   api_match_id: string | null;
   created_at: string;
@@ -40,8 +43,9 @@ export type Prediction = {
   user_id: string;
   match_id: string;
   predicted_outcome: '1' | 'X' | '2';
-  predicted_home_score: number;
-  predicted_away_score: number;
+  predicted_home_score: number | null;
+  predicted_away_score: number | null;
+  boost_used: boolean;
   is_exact_score_correct: boolean;
   is_outcome_correct: boolean;
   points_awarded: number;
