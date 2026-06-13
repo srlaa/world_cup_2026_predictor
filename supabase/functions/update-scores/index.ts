@@ -18,6 +18,14 @@ interface ApiResponse {
   matches?: ApiMatch[];
 }
 
+interface ExistingMatch {
+  api_match_id: string;
+  kickoff_at: string;
+  status: MatchStatus;
+  home_score: number | null;
+  away_score: number | null;
+}
+
 type MatchStatus = 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
 type MatchRound =
   | 'group_round_1'
@@ -112,16 +120,18 @@ Deno.serve(async (req: Request) => {
 
     const { data: existing, error: existingError } = await supabase
       .from('matches')
-      .select('api_match_id')
+      .select('api_match_id, kickoff_at, status, home_score, away_score')
       .not('api_match_id', 'is', null);
     if (existingError) throw existingError;
 
-    const existingIds = new Set((existing ?? []).map((match) => match.api_match_id));
+    const existingByApiId = new Map(
+      ((existing ?? []) as ExistingMatch[]).map((match) => [match.api_match_id, match]),
+    );
     const newRows = apiMatches.flatMap((match) => {
       const apiMatchId = String(match.id);
       const homeTeam = match.homeTeam?.name;
       const awayTeam = match.awayTeam?.name;
-      if (existingIds.has(apiMatchId) || !homeTeam || !awayTeam) return [];
+      if (existingByApiId.has(apiMatchId) || !homeTeam || !awayTeam) return [];
 
       return [{
         api_match_id: apiMatchId,
@@ -150,13 +160,25 @@ Deno.serve(async (req: Request) => {
 
     let updated = 0;
     for (const match of apiMatches) {
+      const current = existingByApiId.get(String(match.id));
+      if (!current) continue;
+
+      const nextStatus = mapStatus(match.status);
+      const nextHomeScore = match.score?.fullTime?.home ?? null;
+      const nextAwayScore = match.score?.fullTime?.away ?? null;
+      const hasChanged = new Date(current.kickoff_at).getTime() !== new Date(match.utcDate).getTime()
+        || current.status !== nextStatus
+        || current.home_score !== nextHomeScore
+        || current.away_score !== nextAwayScore;
+      if (!hasChanged) continue;
+
       const { error } = await supabase
         .from('matches')
         .update({
           kickoff_at: match.utcDate,
-          status: mapStatus(match.status),
-          home_score: match.score?.fullTime?.home ?? null,
-          away_score: match.score?.fullTime?.away ?? null,
+          status: nextStatus,
+          home_score: nextHomeScore,
+          away_score: nextAwayScore,
           updated_at: new Date().toISOString(),
         })
         .eq('api_match_id', String(match.id));
@@ -164,11 +186,13 @@ Deno.serve(async (req: Request) => {
       updated += 1;
     }
 
-    const { error: oddsError } = await supabase.rpc('refresh_dynamic_model_odds');
-    if (oddsError) throw oddsError;
+    if (newRows.length > 0 || updated > 0) {
+      const { error: oddsError } = await supabase.rpc('refresh_dynamic_model_odds');
+      if (oddsError) throw oddsError;
 
-    const { error: scoringError } = await supabase.rpc('recalculate_all_scores');
-    if (scoringError) throw scoringError;
+      const { error: scoringError } = await supabase.rpc('recalculate_all_scores');
+      if (scoringError) throw scoringError;
+    }
 
     let oddsRefresh: 'not_needed' | 'requested' | 'failed' = 'not_needed';
     if (newRows.length > 0) {

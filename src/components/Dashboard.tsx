@@ -97,31 +97,36 @@ export function Dashboard() {
 
       if (matchesData) setMatches(matchesData);
 
-      const { data: allMatches, error: allMatchesError } = await supabase
-        .from('matches')
-        .select('status');
-      if (allMatchesError) throw allMatchesError;
-
-      const { data: predictionsData, error: predictionsError } = await supabase
+      const matchIds = (matchesData ?? []).map((match) => match.id);
+      const predictionsQuery = supabase
         .from('predictions')
         .select('*')
         .eq('user_id', user.id);
-      if (predictionsError) throw predictionsError;
 
+      const [liveResult, upcomingResult, predictionCountResult, predictionsResult] = await Promise.all([
+        supabase.from('matches').select('id', { count: 'exact', head: true }).eq('status', 'live'),
+        supabase.from('matches').select('id', { count: 'exact', head: true }).eq('status', 'scheduled'),
+        supabase.from('predictions').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        matchIds.length > 0 ? predictionsQuery.in('match_id', matchIds) : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (liveResult.error) throw liveResult.error;
+      if (upcomingResult.error) throw upcomingResult.error;
+      if (predictionCountResult.error) throw predictionCountResult.error;
+      if (predictionsResult.error) throw predictionsResult.error;
+
+      const predictionsData = predictionsResult.data;
       if (predictionsData) {
         const predMap: Record<string, Prediction> = {};
-        predictionsData.forEach((p) => {
-          predMap[p.match_id] = p;
+        predictionsData.forEach((prediction) => {
+          predMap[prediction.match_id] = prediction;
         });
         setPredictions(predMap);
-
-        if (allMatches) {
-          setStats({
-            totalPredictions: predictionsData.length,
-            liveMatches: allMatches.filter(m => m.status === 'live').length,
-            upcomingMatches: allMatches.filter(m => m.status === 'scheduled').length,
-          });
-        }
+        setStats({
+          totalPredictions: predictionCountResult.count ?? 0,
+          liveMatches: liveResult.count ?? 0,
+          upcomingMatches: upcomingResult.count ?? 0,
+        });
       }
 
       const { data: roundGoalData, error: roundGoalError } = await supabase
@@ -142,10 +147,37 @@ export function Dashboard() {
   }, [activeTab, user]);
 
   useEffect(() => {
-    fetchData();
-    const interval = window.setInterval(() => fetchData(false), 60_000);
-    return () => window.clearInterval(interval);
+    void fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`match-updates-${user?.id ?? 'anonymous'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'matches' },
+        () => {
+          if (document.visibilityState === 'visible') void fetchData(false);
+        },
+      )
+      .subscribe();
+
+    const refreshInterval = 10 * 60_000;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchData(false);
+    }, refreshInterval);
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void fetchData(false);
+    };
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchData, user?.id]);
 
   return (
     <div className="min-h-screen bg-[#0a0f1a]">

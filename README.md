@@ -84,6 +84,10 @@ normal operation the match is visible in the app within about six minutes:
 five minutes for the backend job and up to one minute for the open browser to
 refresh.
 
+The Football-Data.org free plan allows 10 calls per minute but documents scores
+and schedules as delayed. The five-minute job therefore updates the app as soon
+as the free provider exposes a change, but it cannot guarantee live-score timing.
+
 ## Scoring rules
 
 - A correct outcome scores `odds x 10` points.
@@ -146,3 +150,17 @@ Also add that URL to the Supabase Auth redirect allow list and set it as the
 Site URL. Supabase's default email sender has a low rate limit; for a small
 private group, either disable email confirmation or configure a custom SMTP
 provider before inviting everyone at once.
+
+## Free-plan budget
+
+- Supabase receives roughly 12,000 scheduled Edge Function invocations during
+  a 40-day tournament, far below the 500,000 monthly free quota. Match changes
+  use Realtime, while a ten-minute browser fallback pauses in background tabs
+  and retrieves only the selected round's predictions.
+- The Odds API runs four times daily, about 120 credits per 30 days, below the
+  500-credit free allowance. New knockout pairings add only a handful of runs.
+- Football-Data.org is called once every five minutes, below its 10 calls/minute
+  free-plan rate limit.
+- Netlify's current free plan has 300 monthly credits. Each production deploy
+  costs 15 credits, so avoid more than 20 production deploys per billing month.
+  The static site is under 0.5 MB, making friend-group traffic inexpensive.
