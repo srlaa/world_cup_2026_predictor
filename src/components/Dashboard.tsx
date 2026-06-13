@@ -4,7 +4,11 @@ import { useAuth } from '../hooks/useAuth';
 import { MatchCard } from './MatchCard';
 import { RoundGoalForm } from './RoundGoalForm';
 import { PlayerPredictionHistory } from './PlayerPredictionHistory';
-import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users } from 'lucide-react';
+import { LeaguePanel } from './LeaguePanel';
+import { RoundSummary } from './RoundSummary';
+import { RulesModal } from './RulesModal';
+import { SystemHealth } from './SystemHealth';
+import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users, BookOpen, ShieldCheck, WifiOff, Bell } from 'lucide-react';
 
 const ROUNDS: MatchRound[] = [
   'group_round_1',
@@ -57,7 +61,11 @@ export function Dashboard() {
   const [predictions, setPredictions] = useState<Record<string, Prediction>>({});
   const [roundGoalPrediction, setRoundGoalPrediction] = useState<RoundGoal | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'matches' | 'leaderboard'>('matches');
+  const [activeView, setActiveView] = useState<'matches' | 'leaderboard' | 'leagues' | 'health'>(() =>
+    new URLSearchParams(window.location.search).has('league') ? 'leagues' : 'matches'
+  );
+  const [showRules, setShowRules] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ totalPredictions: 0, liveMatches: 0, upcomingMatches: 0 });
   const initialRoundSelected = useRef(false);
@@ -179,6 +187,16 @@ export function Dashboard() {
     };
   }, [fetchData, user?.id]);
 
+  useEffect(() => {
+    const online = () => setIsOnline(true);
+    const offline = () => setIsOnline(false);
+    window.addEventListener('online', online);
+    window.addEventListener('offline', offline);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
+  }, []);
+
+  const unpredicted = matches.filter((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date() && !predictions[match.id]);
+
   return (
     <div className="min-h-screen bg-[#0a0f1a]">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -232,6 +250,15 @@ export function Dashboard() {
                   <span className="hidden sm:inline">Matches</span>
                 </button>
                 <button
+                  onClick={() => setActiveView('leagues')}
+                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                  title="Private leagues"
+                >
+                  <Users className="w-4 h-4" /><span className="hidden xl:inline">Leagues</span>
+                </button>
+                {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
+                <button onClick={() => setShowRules(true)} className="rounded-lg px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
+                <button
                   onClick={() => setActiveView('leaderboard')}
                   className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                     activeView === 'leaderboard'
@@ -245,7 +272,7 @@ export function Dashboard() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-3 p-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-[#1a2332] to-[#141d2b] rounded-xl border border-white/10">
+                <div className="hidden items-center gap-3 bg-gradient-to-r from-[#1a2332] to-[#141d2b] rounded-xl border border-white/10 p-1.5 sm:flex sm:px-4 sm:py-2">
                   <div className="relative">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-400/20">
                       {profile?.display_name?.[0]?.toUpperCase() || 'U'}
@@ -272,6 +299,7 @@ export function Dashboard() {
       </header>
 
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {!isOnline && <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"><WifiOff className="h-4 w-4" />You are offline. Saved data remains visible, but new predictions cannot be submitted.</div>}
         {error && (
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
@@ -324,6 +352,15 @@ export function Dashboard() {
                 />
               </div>
             )}
+
+            {unpredicted.length > 0 && (
+              <div className="mb-6 flex items-center gap-3 rounded-xl border border-blue-500/25 bg-blue-500/10 px-4 py-3 text-sm text-blue-100/80">
+                <Bell className="h-5 w-5 shrink-0 text-blue-300" />
+                <span><strong>{unpredicted.length}</strong> {unpredicted.length === 1 ? 'match is' : 'matches are'} still waiting for your prediction in this round. Next kickoff: {new Date(unpredicted[0].kickoff_at).toLocaleString()}.</span>
+              </div>
+            )}
+
+            <RoundSummary matches={matches} predictions={predictions} roundGoal={roundGoalPrediction} />
 
             {matches.length > 0 && (BOOST_LIMITS[activeTab] > 0 || ROUND_MULTIPLIERS[activeTab] > 1) && (
               <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3 text-sm text-white/70">
@@ -384,7 +421,10 @@ export function Dashboard() {
         )}
 
         {activeView === 'leaderboard' && <Leaderboard />}
+        {activeView === 'leagues' && <LeaguePanel />}
+        {activeView === 'health' && profile?.is_admin && <SystemHealth />}
       </main>
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>
   );
 }

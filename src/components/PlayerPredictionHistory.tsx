@@ -13,13 +13,19 @@ type VisibleMatchPrediction = {
   status: MatchStatus;
   home_score: number | null;
   away_score: number | null;
+  final_home_score: number | null;
+  final_away_score: number | null;
+  winner_team: string | null;
   exact_score_enabled: boolean;
   predicted_outcome: '1' | 'X' | '2';
   predicted_home_score: number | null;
   predicted_away_score: number | null;
+  predicted_advancing_team: string | null;
   boost_used: boolean;
   is_outcome_correct: boolean;
   is_exact_score_correct: boolean;
+  is_advancer_correct: boolean;
+  advancement_points: number;
   points_awarded: number;
 };
 
@@ -166,11 +172,19 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
                           </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
                           <div className="rounded-xl bg-black/15 p-3">
                             <p className="text-[11px] uppercase tracking-wide text-white/35">Pick</p>
                             <p className="mt-1 font-semibold text-white">{outcomeLabel(prediction.predicted_outcome, prediction.home_team, prediction.away_team)}</p>
                           </div>
+                          {prediction.predicted_advancing_team && (
+                            <div className="rounded-xl bg-black/15 p-3">
+                              <p className="text-[11px] uppercase tracking-wide text-white/35">To advance</p>
+                              <p className={`mt-1 font-semibold ${prediction.is_advancer_correct ? 'text-blue-300' : 'text-white'}`}>
+                                {prediction.predicted_advancing_team} {prediction.is_advancer_correct ? `+${prediction.advancement_points}` : ''}
+                              </p>
+                            </div>
+                          )}
                           <div className="rounded-xl bg-black/15 p-3">
                             <p className="text-[11px] uppercase tracking-wide text-white/35">Exact score</p>
                             <p className={`mt-1 font-semibold ${finished && prediction.is_exact_score_correct ? 'text-amber-300' : 'text-white'}`}>

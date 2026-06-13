@@ -61,6 +61,10 @@ function formatTimeLeft(kickoffAt: string): string {
   return `${minutes}m`;
 }
 
+function requiresAdvancer(round: MatchRound): boolean {
+  return ['round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'final'].includes(round);
+}
+
 export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMultiplier, onUpdate }: MatchCardProps) {
   const { user } = useAuth();
   const [isLocked, setIsLocked] = useState(isMatchLocked(match.kickoff_at));
@@ -71,6 +75,9 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
   const [homeScore, setHomeScore] = useState(prediction?.predicted_home_score ?? 0);
   const [awayScore, setAwayScore] = useState(prediction?.predicted_away_score ?? 0);
   const [boostUsed, setBoostUsed] = useState(prediction?.boost_used ?? false);
+  const [advancingTeam, setAdvancingTeam] = useState(
+    prediction?.predicted_advancing_team ?? match.home_team,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,7 +86,8 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
     setHomeScore(prediction?.predicted_home_score ?? 0);
     setAwayScore(prediction?.predicted_away_score ?? 0);
     setBoostUsed(prediction?.boost_used ?? false);
-  }, [match.exact_score_enabled, prediction]);
+    setAdvancingTeam(prediction?.predicted_advancing_team ?? match.home_team);
+  }, [match.exact_score_enabled, match.home_team, prediction]);
 
   useEffect(() => {
     const checkLock = () => {
@@ -110,6 +118,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
             predicted_outcome: selectedOutcome,
             predicted_home_score: match.exact_score_enabled ? homeScore : null,
             predicted_away_score: match.exact_score_enabled ? awayScore : null,
+            predicted_advancing_team: requiresAdvancer(match.round) ? advancingTeam : null,
             boost_used: boostUsed,
           })
           .eq('id', prediction.id);
@@ -124,6 +133,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
             predicted_outcome: selectedOutcome,
             predicted_home_score: match.exact_score_enabled ? homeScore : null,
             predicted_away_score: match.exact_score_enabled ? awayScore : null,
+            predicted_advancing_team: requiresAdvancer(match.round) ? advancingTeam : null,
             boost_used: boostUsed,
           });
 
@@ -255,6 +265,13 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                   Live
                 </div>
               )}
+              {isFinished && match.final_home_score !== null && match.final_away_score !== null
+                && (match.final_home_score !== match.home_score || match.final_away_score !== match.away_score) && (
+                <p className="mt-2 text-center text-xs text-white/45">
+                  Final: {match.final_home_score}-{match.final_away_score}
+                  {match.score_duration === 'PENALTY_SHOOTOUT' ? ' after penalties' : ' after extra time'}
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1">
@@ -308,7 +325,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
 
       {isFinished && prediction && (
         <div className="bg-gradient-to-b from-white/[0.06] to-transparent rounded-xl p-4 border border-white/10 mt-2">
-          <div className={`grid gap-3 text-center ${match.exact_score_enabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div className={`grid gap-3 text-center ${match.exact_score_enabled || requiresAdvancer(match.round) ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
             <div>
               <p className="text-white/40 text-xs mb-1">Your Pick</p>
               <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${
@@ -326,6 +343,17 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                 }`}>
                   {prediction.predicted_home_score}:{prediction.predicted_away_score}
                   {prediction.is_exact_score_correct && <Zap className="w-3.5 h-3.5" />}
+                </p>
+              </div>
+            )}
+            {requiresAdvancer(match.round) && (
+              <div>
+                <p className="text-white/40 text-xs mb-1">To Advance</p>
+                <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${
+                  prediction.is_advancer_correct ? 'text-blue-300' : 'text-white/60'
+                }`}>
+                  {prediction.predicted_advancing_team}
+                  {prediction.is_advancer_correct && <Check className="w-4 h-4" />}
                 </p>
               </div>
             )}
@@ -489,6 +517,35 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                 </div>
               )}
 
+              {requiresAdvancer(match.round) && (
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-white/50">
+                      {match.round === 'final' ? 'Tournament Winner' : 'Team To Advance'}
+                    </label>
+                    <span className="text-xs font-semibold text-blue-300">+25 pts</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[match.home_team, match.away_team].map((team) => (
+                      <button
+                        key={team}
+                        type="button"
+                        onClick={() => setAdvancingTeam(team)}
+                        className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-all ${
+                          advancingTeam === team
+                            ? 'border-blue-400/60 bg-blue-500/20 text-blue-100 shadow-lg shadow-blue-500/10'
+                            : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                        }`}
+                      >
+                        <span className="mr-2">{team === match.home_team ? homeFlag : awayFlag}</span>
+                        {team}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-white/40">Outcome and exact score are always judged after 90 minutes. This pick covers extra time and penalties.</p>
+                </div>
+              )}
+
               <div className="bg-gradient-to-r from-amber-500/10 to-transparent rounded-xl p-4 border border-amber-500/20">
                 <div className="flex items-center justify-between">
                   <div>
@@ -503,6 +560,11 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 rounded-lg">
                       <Zap className="w-4 h-4 text-amber-400" />
                       <span className="text-sm font-semibold text-amber-400">+50 pts bonus</span>
+                    </div>
+                  )}
+                  {requiresAdvancer(match.round) && (
+                    <div className="ml-2 rounded-lg bg-blue-500/15 px-3 py-1.5 text-sm font-semibold text-blue-300">
+                      +25 pts advance
                     </div>
                   )}
                 </div>

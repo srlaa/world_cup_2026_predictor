@@ -7,11 +7,12 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onToggleForm }: LoginPageProps) {
-  const { signIn } = useAuth();
+  const { signIn, requestPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -23,6 +24,13 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
       setError(error.message);
     }
     setLoading(false);
+  };
+
+  const resetPassword = async () => {
+    setError(null); setMessage(null);
+    if (!email) return setError('Enter your email address first.');
+    const { error } = await requestPasswordReset(email);
+    if (error) setError(error.message); else setMessage('Password reset link sent. Check your email.');
   };
 
   return (
@@ -104,6 +112,7 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
                 <span>{error}</span>
               </div>
             )}
+            {message && <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300">{message}</div>}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
@@ -122,7 +131,7 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Password</label>
+                <div className="mb-2 flex items-center justify-between"><label className="block text-sm font-medium text-white/70">Password</label><button type="button" onClick={resetPassword} className="text-xs font-semibold text-emerald-400 hover:text-emerald-300">Forgot password?</button></div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                   <input
@@ -164,6 +173,22 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
       </div>
     </div>
   );
+}
+
+export function UpdatePasswordPage() {
+  const { updatePassword, finishPasswordRecovery } = useAuth();
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (password.length < 8) return setError('Password must contain at least 8 characters.');
+    setLoading(true); setError(null);
+    const result = await updatePassword(password);
+    if (result.error) setError(result.error.message);
+    setLoading(false);
+  };
+  return <div className="flex min-h-screen items-center justify-center bg-[#0a0f1a] p-6"><form onSubmit={submit} className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8"><Trophy className="mb-5 h-10 w-10 text-emerald-400" /><h1 className="text-2xl font-bold text-white">Set a new password</h1><p className="mt-2 text-sm text-white/50">Choose a new password for your predictor account.</p>{error && <p className="mt-5 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required placeholder="New password" className="mt-6 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-emerald-500/50" /><button disabled={loading} className="mt-4 w-full rounded-xl bg-emerald-500 py-3 font-semibold text-white disabled:opacity-50">{loading ? 'Updating...' : 'Update password'}</button><button type="button" onClick={finishPasswordRecovery} className="mt-3 w-full py-2 text-sm text-white/50">Cancel</button></form></div>;
 }
 
 export function RegisterPage({ onToggleForm }: LoginPageProps) {

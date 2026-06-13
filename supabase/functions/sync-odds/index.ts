@@ -122,6 +122,11 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Missing ODDS_API_KEY or Supabase server secrets' }, 500);
   }
 
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: run } = await supabase.from('sync_runs').insert({ job_name: 'sync-odds' }).select('id').maybeSingle();
+
   try {
     const url = new URL(`${ODDS_API_BASE}/sports/${SPORT_KEY}/odds`);
     url.searchParams.set('apiKey', oddsApiKey);
@@ -134,14 +139,10 @@ Deno.serve(async (req: Request) => {
     if (!response.ok) {
       const details = await response.text();
       console.error('Odds API request failed', response.status, details);
-      return json({ error: 'Odds provider request failed', status: response.status, details }, 502);
+      throw new Error(`Odds provider request failed (${response.status})`);
     }
 
     const events = await response.json() as OddsEvent[];
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
     const now = new Date().toISOString();
     const { data, error: matchesError } = await supabase
       .from('matches')
@@ -181,15 +182,16 @@ Deno.serve(async (req: Request) => {
       updated += 1;
     }
 
-    return json({
-      success: true,
+    const summary = {
       eventsReceived: events.length,
       matchesUpdated: updated,
       unmatched,
       requestsUsed: response.headers.get('x-requests-used'),
       requestsRemaining: response.headers.get('x-requests-remaining'),
       requestsLast: response.headers.get('x-requests-last'),
-    });
+    };
+    if (run?.id) await supabase.from('sync_runs').update({ success: true, completed_at: new Date().toISOString(), summary }).eq('id', run.id);
+    return json({ success: true, ...summary });
   } catch (error) {
     console.error('sync-odds failed', error);
     const message = error instanceof Error
@@ -197,6 +199,7 @@ Deno.serve(async (req: Request) => {
       : typeof error === 'object' && error !== null
         ? JSON.stringify(error)
         : String(error);
+    if (run?.id) await supabase.from('sync_runs').update({ success: false, completed_at: new Date().toISOString(), error_message: message }).eq('id', run.id);
     return json({ error: message }, 500);
   }
 });

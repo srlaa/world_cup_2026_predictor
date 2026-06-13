@@ -11,7 +11,19 @@ interface ApiMatch {
   stage: string;
   homeTeam: { name: string | null } | null;
   awayTeam: { name: string | null } | null;
-  score?: { fullTime?: { home: number | null; away: number | null } };
+  score?: {
+    winner?: 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null;
+    duration?: 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT' | null;
+    fullTime?: ScorePair;
+    regularTime?: ScorePair;
+  };
+}
+
+interface ScorePair {
+  home?: number | null;
+  away?: number | null;
+  homeTeam?: number | null;
+  awayTeam?: number | null;
 }
 
 interface ApiResponse {
@@ -24,6 +36,10 @@ interface ExistingMatch {
   status: MatchStatus;
   home_score: number | null;
   away_score: number | null;
+  final_home_score: number | null;
+  final_away_score: number | null;
+  score_duration: string | null;
+  winner_team: string | null;
 }
 
 type MatchStatus = 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
@@ -91,6 +107,31 @@ function mapRound(matchday: number | null, stage: string): MatchRound {
   return rounds[normalized] ?? 'group_round_1';
 }
 
+function scoreValue(pair: ScorePair | undefined, side: 'home' | 'away'): number | null {
+  if (!pair) return null;
+  return pair[side] ?? pair[side === 'home' ? 'homeTeam' : 'awayTeam'] ?? null;
+}
+
+function scoreFields(match: ApiMatch, status: MatchStatus) {
+  const finalHome = scoreValue(match.score?.fullTime, 'home');
+  const finalAway = scoreValue(match.score?.fullTime, 'away');
+  const regularHome = scoreValue(match.score?.regularTime, 'home');
+  const regularAway = scoreValue(match.score?.regularTime, 'away');
+  const useFullTimeAsRegular = status !== 'finished' || !match.score?.duration || match.score.duration === 'REGULAR';
+  return {
+    home_score: regularHome ?? (useFullTimeAsRegular ? finalHome : null),
+    away_score: regularAway ?? (useFullTimeAsRegular ? finalAway : null),
+    final_home_score: finalHome,
+    final_away_score: finalAway,
+    score_duration: match.score?.duration ?? null,
+    winner_team: match.score?.winner === 'HOME_TEAM'
+      ? match.homeTeam?.name ?? null
+      : match.score?.winner === 'AWAY_TEAM'
+        ? match.awayTeam?.name ?? null
+        : null,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   if (!isAuthorized(req)) return json({ error: 'Unauthorized' }, 401);
@@ -102,6 +143,11 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Missing required server secrets' }, 500);
   }
 
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: run } = await supabase.from('sync_runs').insert({ job_name: 'update-scores' }).select('id').maybeSingle();
+
   try {
     const response = await fetch(`${FOOTBALL_API_BASE}/competitions/WC/matches?season=2026`, {
       headers: { 'X-Auth-Token': footballApiToken },
@@ -109,18 +155,14 @@ Deno.serve(async (req: Request) => {
     if (!response.ok) {
       const details = await response.text();
       console.error('Football API score update failed', response.status, details);
-      return json({ error: 'Football API request failed', status: response.status }, 502);
+      throw new Error(`Football API request failed (${response.status})`);
     }
 
     const payload = await response.json() as ApiResponse;
     const apiMatches = payload.matches ?? [];
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
     const { data: existing, error: existingError } = await supabase
       .from('matches')
-      .select('api_match_id, kickoff_at, status, home_score, away_score')
+      .select('api_match_id, kickoff_at, status, home_score, away_score, final_home_score, final_away_score, score_duration, winner_team')
       .not('api_match_id', 'is', null);
     if (existingError) throw existingError;
 
@@ -132,6 +174,7 @@ Deno.serve(async (req: Request) => {
       const homeTeam = match.homeTeam?.name;
       const awayTeam = match.awayTeam?.name;
       if (existingByApiId.has(apiMatchId) || !homeTeam || !awayTeam) return [];
+      const scores = scoreFields(match, mapStatus(match.status));
 
       return [{
         api_match_id: apiMatchId,
@@ -140,8 +183,7 @@ Deno.serve(async (req: Request) => {
         kickoff_at: match.utcDate,
         round: mapRound(match.matchday, match.stage),
         status: mapStatus(match.status),
-        home_score: match.score?.fullTime?.home ?? null,
-        away_score: match.score?.fullTime?.away ?? null,
+        ...scores,
         odds_home: 2,
         odds_draw: 3,
         odds_away: 2,
@@ -164,12 +206,15 @@ Deno.serve(async (req: Request) => {
       if (!current) continue;
 
       const nextStatus = mapStatus(match.status);
-      const nextHomeScore = match.score?.fullTime?.home ?? null;
-      const nextAwayScore = match.score?.fullTime?.away ?? null;
+      const scores = scoreFields(match, nextStatus);
       const hasChanged = new Date(current.kickoff_at).getTime() !== new Date(match.utcDate).getTime()
         || current.status !== nextStatus
-        || current.home_score !== nextHomeScore
-        || current.away_score !== nextAwayScore;
+        || current.home_score !== scores.home_score
+        || current.away_score !== scores.away_score
+        || current.final_home_score !== scores.final_home_score
+        || current.final_away_score !== scores.final_away_score
+        || current.score_duration !== scores.score_duration
+        || current.winner_team !== scores.winner_team;
       if (!hasChanged) continue;
 
       const { error } = await supabase
@@ -177,8 +222,7 @@ Deno.serve(async (req: Request) => {
         .update({
           kickoff_at: match.utcDate,
           status: nextStatus,
-          home_score: nextHomeScore,
-          away_score: nextAwayScore,
+          ...scores,
           updated_at: new Date().toISOString(),
         })
         .eq('api_match_id', String(match.id));
@@ -215,14 +259,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const summary = { processed: updated, newMatches: newRows.length, oddsRefresh };
+    if (run?.id) await supabase.from('sync_runs').update({ success: true, completed_at: new Date().toISOString(), summary }).eq('id', run.id);
     return json({
       success: true,
-      processed: updated,
-      newMatches: newRows.length,
-      oddsRefresh,
+      ...summary,
     });
   } catch (error) {
     console.error('update-scores failed', error);
-    return json({ error: error instanceof Error ? error.message : 'Unexpected update error' }, 500);
+    const message = error instanceof Error ? error.message : 'Unexpected update error';
+    if (run?.id) await supabase.from('sync_runs').update({ success: false, completed_at: new Date().toISOString(), error_message: message }).eq('id', run.id);
+    return json({ error: message }, 500);
   }
 });

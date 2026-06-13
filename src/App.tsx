@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useAuth, AuthProvider } from './hooks/useAuth';
-import { LoginPage, RegisterPage } from './components/LoginPage';
+import { LoginPage, RegisterPage, UpdatePasswordPage } from './components/LoginPage';
 import { Dashboard } from './components/Dashboard';
 import { Loader2 } from 'lucide-react';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, passwordRecovery } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
 
   if (loading) {
@@ -22,6 +22,8 @@ function AppContent() {
     }
     return <LoginPage onToggleForm={() => setShowRegister(true)} />;
   }
+
+  if (passwordRecovery) return <UpdatePasswordPage />;
 
   return <Dashboard />;
 }

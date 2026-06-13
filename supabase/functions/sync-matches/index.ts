@@ -24,7 +24,19 @@ interface ApiMatch {
   stage: string;
   homeTeam: { name: string | null } | null;
   awayTeam: { name: string | null } | null;
-  score?: { fullTime?: { home: number | null; away: number | null } };
+  score?: {
+    winner?: 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null;
+    duration?: 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT' | null;
+    fullTime?: ScorePair;
+    regularTime?: ScorePair;
+  };
+}
+
+interface ScorePair {
+  home?: number | null;
+  away?: number | null;
+  homeTeam?: number | null;
+  awayTeam?: number | null;
 }
 
 interface ApiResponse {
@@ -38,6 +50,31 @@ interface ExistingMatch {
   odds_home: number;
   odds_draw: number;
   odds_away: number;
+}
+
+function scoreValue(pair: ScorePair | undefined, side: 'home' | 'away'): number | null {
+  if (!pair) return null;
+  return pair[side] ?? pair[side === 'home' ? 'homeTeam' : 'awayTeam'] ?? null;
+}
+
+function scoreFields(match: ApiMatch, status: MatchStatus) {
+  const finalHome = scoreValue(match.score?.fullTime, 'home');
+  const finalAway = scoreValue(match.score?.fullTime, 'away');
+  const regularHome = scoreValue(match.score?.regularTime, 'home');
+  const regularAway = scoreValue(match.score?.regularTime, 'away');
+  const useFullTimeAsRegular = status !== 'finished' || !match.score?.duration || match.score.duration === 'REGULAR';
+  return {
+    home_score: regularHome ?? (useFullTimeAsRegular ? finalHome : null),
+    away_score: regularAway ?? (useFullTimeAsRegular ? finalAway : null),
+    final_home_score: finalHome,
+    final_away_score: finalAway,
+    score_duration: match.score?.duration ?? null,
+    winner_team: match.score?.winner === 'HOME_TEAM'
+      ? match.homeTeam?.name ?? null
+      : match.score?.winner === 'AWAY_TEAM'
+        ? match.awayTeam?.name ?? null
+        : null,
+  };
 }
 
 function json(body: unknown, status = 200): Response {
@@ -138,6 +175,11 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Missing required server secrets' }, 500);
   }
 
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: run } = await supabase.from('sync_runs').insert({ job_name: 'sync-matches' }).select('id').maybeSingle();
+
   try {
     const response = await fetch(`${FOOTBALL_API_BASE}/competitions/WC/matches?season=2026`, {
       headers: { 'X-Auth-Token': footballApiToken },
@@ -146,16 +188,12 @@ Deno.serve(async (req: Request) => {
     if (!response.ok) {
       const details = await response.text();
       console.error('Football API sync failed', response.status, details);
-      return json({ error: 'Football API request failed', status: response.status }, 502);
+      throw new Error(`Football API request failed (${response.status})`);
     }
 
     const payload = await response.json() as ApiResponse;
     const apiMatches = payload.matches ?? [];
-    if (apiMatches.length === 0) return json({ error: 'Football API returned no matches' }, 502);
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    if (apiMatches.length === 0) throw new Error('Football API returned no matches');
 
     const { data: existing, error: existingError } = await supabase
       .from('matches')
@@ -181,6 +219,8 @@ Deno.serve(async (req: Request) => {
         ? [current.odds_home, current.odds_draw, current.odds_away]
         : modelOdds(homeTeam, awayTeam);
 
+      const scores = scoreFields(match, mapStatus(match.status));
+
       return [{
         api_match_id: apiMatchId,
         home_team: homeTeam,
@@ -188,8 +228,7 @@ Deno.serve(async (req: Request) => {
         kickoff_at: match.utcDate,
         round: mapRound(match.matchday, match.stage),
         status: mapStatus(match.status),
-        home_score: match.score?.fullTime?.home ?? null,
-        away_score: match.score?.fullTime?.away ?? null,
+        ...scores,
         odds_home: oddsHome,
         odds_draw: oddsDraw,
         odds_away: oddsAway,
@@ -198,7 +237,7 @@ Deno.serve(async (req: Request) => {
       }];
     });
 
-    if (rows.length === 0) return json({ error: 'No matches with known teams were returned' }, 502);
+    if (rows.length === 0) throw new Error('No matches with known teams were returned');
 
     const { error: upsertError } = await supabase
       .from('matches')
@@ -214,11 +253,12 @@ Deno.serve(async (req: Request) => {
     const { error: scoringError } = await supabase.rpc('recalculate_all_scores');
     if (scoringError) throw scoringError;
 
+    const summary = { received: apiMatches.length, synchronized: rows.length, skipped: apiMatches.length - rows.length };
+    if (run?.id) await supabase.from('sync_runs').update({ success: true, completed_at: new Date().toISOString(), summary }).eq('id', run.id);
+
     return json({
       success: true,
-      received: apiMatches.length,
-      synchronized: rows.length,
-      skipped: apiMatches.length - rows.length,
+      ...summary,
     });
   } catch (error) {
     console.error('sync-matches failed', error);
@@ -227,6 +267,7 @@ Deno.serve(async (req: Request) => {
       : typeof error === 'object' && error !== null
         ? JSON.stringify(error)
         : String(error);
+    if (run?.id) await supabase.from('sync_runs').update({ success: false, completed_at: new Date().toISOString(), error_message: message }).eq('id', run.id);
     return json({ error: message }, 500);
   }
 });

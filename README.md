@@ -1,7 +1,7 @@
 # World Cup 2026 Predictor
 
-React and Supabase application for match predictions, round-goal predictions,
-automatic score updates, and a global leaderboard.
+React and Supabase application for match predictions, private friend leagues,
+automatic score updates, and protected prediction history.
 
 ## Stack
 
@@ -44,7 +44,7 @@ npx supabase secrets set CRON_SECRET=YOUR_LONG_RANDOM_SECRET
 npx supabase secrets set ODDS_API_KEY=YOUR_THE_ODDS_API_KEY
 ```
 
-Deploy both functions:
+Deploy all functions:
 
 ```bash
 npx supabase functions deploy sync-matches
@@ -90,7 +90,8 @@ as the free provider exposes a change, but it cannot guarantee live-score timing
 
 ## Scoring rules
 
-- A correct outcome scores `odds x 10` points.
+- `1/X/2` and exact score always refer to the result after 90 minutes.
+- A correct outcome scores `odds x 10` points, rounded up.
 - An exact score adds 50 points and is never multiplied.
 - Exact-score fields appear on a stable pseudo-random selection of 6 matches in
   each group round and 4 matches in the round of 32. They appear on every match
@@ -101,6 +102,14 @@ as the free provider exposes a change, but it cannot guarantee live-score timing
 - Quarter-final outcome points have a `1.5x` round multiplier.
 - Semi-final and final outcome points have a `2x` round multiplier.
 - Boost badges are unavailable after the quarter-finals.
+- From the round of 32, users also select the team that advances. This is
+  independent from the 90-minute outcome and awards 25 points. In the final it
+  represents the tournament winner.
+- Cancelled matches are void and do not block round-goal scoring.
+
+Exact-score selections are frozen once all fixtures for a round exist. New API
+syncs therefore cannot silently change which group or round-of-32 matches offer
+the exact-score bonus.
 
 ## Match odds
 
@@ -131,6 +140,7 @@ refreshes are deterministic and cannot count a result twice.
 ## Quality checks
 
 ```bash
+npm test
 npm run typecheck
 npm run lint
 npm run build
@@ -139,17 +149,30 @@ npm audit --omit=dev
 
 ## Public frontend
 
-The GitHub Pages workflow deploys every push to `main`. Select **GitHub
-Actions** under repository **Settings > Pages**. The public URL will be:
+Netlify builds `main` with `npm run build` and serves `dist`. Add
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify environment
+variables, then trigger **Deploy without cache**. Add the final Netlify URL to
+the Supabase Auth redirect allow list and set it as the Site URL so sign-up and
+password-reset links return to the application.
 
-```text
-https://srlaa.github.io/world_cup_2026_predictor/
-```
+Users can create private leagues and share the generated invite link. Future
+picks remain hidden until kickoff in both global and private standings.
 
-Also add that URL to the Supabase Auth redirect allow list and set it as the
-Site URL. Supabase's default email sender has a low rate limit; for a small
-private group, either disable email confirmation or configure a custom SMTP
-provider before inviting everyone at once.
+## Tournament operations
+
+- Check the admin-only **System health** screen daily. It shows the latest
+  fixture, score, and odds synchronization result, including remaining odds
+  credits.
+- Before each knockout round, confirm all pairings are present and that odds
+  have a recent `odds_updated_at` value.
+- Export a database backup from Supabase before the tournament, after the group
+  stage, and before the final. Keep the export outside the repository.
+- For an urgent frontend bug, fix and push `main`; Netlify creates an immutable
+  deploy that can also be rolled back from **Deploys**.
+- For a scoring correction, update the database function through a migration
+  and run `select public.recalculate_all_scores();`. It is idempotent.
+- Rotate `CRON_SECRET` if it has appeared in terminal history, chat, screenshots,
+  or logs, then update both Supabase secrets and Vault cron configuration.
 
 ## Free-plan budget
 

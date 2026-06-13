@@ -15,6 +15,7 @@ export type Profile = {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  is_admin: boolean;
 };
 
 export type Match = {
@@ -23,6 +24,10 @@ export type Match = {
   away_team: string;
   home_score: number | null;
   away_score: number | null;
+  final_home_score: number | null;
+  final_away_score: number | null;
+  score_duration: 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT' | null;
+  winner_team: string | null;
   kickoff_at: string;
   round: MatchRound;
   status: MatchStatus;
@@ -45,12 +50,23 @@ export type Prediction = {
   predicted_outcome: '1' | 'X' | '2';
   predicted_home_score: number | null;
   predicted_away_score: number | null;
+  predicted_advancing_team: string | null;
   boost_used: boolean;
   is_exact_score_correct: boolean;
   is_outcome_correct: boolean;
+  is_advancer_correct: boolean;
+  advancement_points: number;
   points_awarded: number;
   created_at: string;
   updated_at: string;
+};
+
+export type League = {
+  id: string;
+  name: string;
+  invite_code: string;
+  owner_id: string;
+  member_count: number;
 };
 
 export type RoundGoal = {
