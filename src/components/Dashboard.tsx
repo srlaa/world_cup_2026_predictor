@@ -489,25 +489,26 @@ function Leaderboard() {
           {entries[0] && (
             <div className="mb-8 bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/5 border border-amber-500/20 rounded-2xl p-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl" />
-              <div className="relative flex items-center gap-6">
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-400 via-amber-400 to-amber-500 flex items-center justify-center shadow-xl shadow-amber-500/40">
+              <div className="relative flex items-center gap-4 sm:gap-6">
+                <div className="relative shrink-0">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-yellow-400 via-amber-400 to-amber-500 flex items-center justify-center shadow-xl shadow-amber-500/40">
                     <Crown className="w-10 h-10 text-white" />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg">
                     1
                   </div>
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <p className="text-amber-300/70 text-sm font-medium mb-1">Current Leader</p>
                   <button
                     type="button"
                     onClick={() => setSelectedPlayer(entries[0])}
-                    className="text-left text-2xl font-bold text-white hover:text-emerald-300"
+                    className="block max-w-full truncate text-left text-xl font-bold text-white hover:text-emerald-300 sm:text-2xl"
+                    title={profileName(entries[0])}
                   >
                     {profileName(entries[0])}
                   </button>
-                  <div className="flex items-center gap-4 mt-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                     <div className="flex items-center gap-1.5 text-emerald-400">
                       <TrendingUp className="w-4 h-4" />
                       <span className="font-bold text-lg">{totalPoints(entries[0])}</span>
@@ -526,12 +527,12 @@ function Leaderboard() {
           )}
 
           <div className="bg-gradient-to-b from-white/5 to-transparent border border-white/5 rounded-2xl overflow-hidden">
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-white/5 text-sm font-semibold text-white/40 border-b border-white/5 uppercase tracking-wider text-xs">
-              <div className="col-span-1 text-center">Rank</div>
-              <div className="col-span-5">Player</div>
-              <div className="col-span-2 text-right">Match</div>
-              <div className="col-span-2 text-right">Round</div>
-              <div className="col-span-2 text-right">Total</div>
+            <div className="grid grid-cols-12 gap-2 px-3 py-4 text-xs font-semibold uppercase tracking-wider text-white/40 bg-white/5 border-b border-white/5 sm:gap-4 sm:px-6">
+              <div className="col-span-2 text-center sm:col-span-1">Rank</div>
+              <div className="col-span-7 sm:col-span-5">Player</div>
+              <div className="hidden text-right sm:col-span-2 sm:block">Match</div>
+              <div className="hidden text-right sm:col-span-2 sm:block">Round</div>
+              <div className="col-span-3 text-right sm:col-span-2">Total</div>
             </div>
 
             <div className="divide-y divide-white/5">
@@ -542,13 +543,13 @@ function Leaderboard() {
                 return (
                   <div
                     key={entry.user_id}
-                    className={`grid grid-cols-12 gap-4 px-6 py-4 items-center transition-all duration-300 ${
+                    className={`grid grid-cols-12 gap-2 px-3 py-4 items-center transition-all duration-300 sm:gap-4 sm:px-6 ${
                       isCurrentUser
                         ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent'
                         : 'hover:bg-white/5'
                     }`}
                   >
-                    <div className="col-span-1">
+                    <div className="col-span-2 sm:col-span-1">
                       <div className="flex items-center justify-center">
                         {index === 0 ? (
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-white font-bold shadow-lg shadow-amber-400/30">
@@ -567,27 +568,30 @@ function Leaderboard() {
                         )}
                       </div>
                     </div>
-                    <div className="col-span-5 flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm ${
+                    <div className="col-span-7 flex min-w-0 items-center gap-2 sm:col-span-5 sm:gap-3">
+                      <div className={`h-9 w-9 shrink-0 rounded-xl flex items-center justify-center font-semibold text-sm sm:h-10 sm:w-10 ${
                         isCurrentUser
                           ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 ring-2 ring-emerald-400/30 shadow-lg shadow-emerald-500/30'
                           : 'bg-gradient-to-br from-slate-600 to-slate-700'
                       } text-white`}>
                         {profileName(entry)[0]?.toUpperCase() || '?'}
                       </div>
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPlayer(entry)}
-                          className={`font-semibold hover:text-emerald-300 ${isCurrentUser ? 'text-emerald-400' : 'text-white'}`}
-                        >
-                          {profileName(entry)}
-                        </button>
-                        {isCurrentUser && (
-                          <span className="ml-2 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            You
-                          </span>
-                        )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPlayer(entry)}
+                            className={`min-w-0 truncate text-left font-semibold hover:text-emerald-300 ${isCurrentUser ? 'text-emerald-400' : 'text-white'}`}
+                            title={profileName(entry)}
+                          >
+                            {profileName(entry)}
+                          </button>
+                          {isCurrentUser && (
+                            <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500 sm:px-2 sm:text-xs">
+                              You
+                            </span>
+                          )}
+                        </div>
                         {entry.exact_score_bonuses > 0 && (
                           <div className="flex items-center gap-1 text-amber-400/70 text-xs mt-0.5">
                             <Zap className="w-3 h-3" />
@@ -596,17 +600,17 @@ function Leaderboard() {
                         )}
                       </div>
                     </div>
-                    <div className="col-span-2 text-right">
+                    <div className="hidden text-right sm:col-span-2 sm:block">
                       <span className="text-white/80 font-medium">
                         {Math.ceil(Number(entry.total_match_points || 0))}
                       </span>
                     </div>
-                    <div className="col-span-2 text-right">
+                    <div className="hidden text-right sm:col-span-2 sm:block">
                       <span className="text-white/80 font-medium">
                         {entry.total_round_goal_points || 0}
                       </span>
                     </div>
-                    <div className="col-span-2 text-right">
+                    <div className="col-span-3 text-right sm:col-span-2">
                       <span className={`font-bold text-lg ${
                         index === 0 ? 'text-amber-400' :
                         index === 1 ? 'text-slate-300' :
