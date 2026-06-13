@@ -227,7 +227,7 @@ export function Dashboard() {
                   </span>
                 </div>
                 <h1 className="mt-1 truncate bg-gradient-to-r from-white via-emerald-100 to-emerald-300 bg-clip-text text-xl font-black tracking-tight text-transparent sm:text-2xl">
-                  Cup Quest 2026
+                  Mundicto: World Cup Predictor
                 </h1>
                 <p className="truncate text-xs font-medium text-white/50 sm:text-sm">
                   Predict the score. Boost the bold. Climb the table.
