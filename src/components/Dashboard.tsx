@@ -198,86 +198,101 @@ export function Dashboard() {
   const unpredicted = matches.filter((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date() && !predictions[match.id]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0a0f1a] pb-24 sm:pb-0">
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0f1a] pb-28 sm:pb-0">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl" />
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl" />
       </div>
 
-      <header className="sticky top-0 z-50 bg-[#0a0f1a]/90 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex min-w-0 items-center justify-between">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-500" />
-                <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 flex items-center justify-center shadow-xl">
-                  <Trophy className="w-6 h-6 text-white" />
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0f1a]/90 backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <div className="relative shrink-0">
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-600 opacity-60 blur transition duration-500" />
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-gradient-to-br from-[#1fffb1] via-emerald-500 to-[#067a55] shadow-xl shadow-emerald-500/25 sm:h-14 sm:w-14">
+                  <Trophy className="h-7 w-7 text-white drop-shadow" />
+                  <Target className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#0a0f1a] p-0.5 text-amber-300 ring-2 ring-emerald-300/40" />
                 </div>
               </div>
-              <div className="hidden min-w-0 sm:block">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">World Cup 2026</h1>
-                <p className="text-xs text-emerald-400/80 font-medium tracking-wide">Predictor Challenge</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+                    WC 2026
+                  </span>
+                  <span className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-white/50 sm:flex">
+                    <Zap className="h-3 w-3 text-amber-300" />
+                    Live picks
+                  </span>
+                </div>
+                <h1 className="mt-1 truncate bg-gradient-to-r from-white via-emerald-100 to-emerald-300 bg-clip-text text-xl font-black tracking-tight text-transparent sm:text-2xl">
+                  Cup Quest 2026
+                </h1>
+                <p className="truncate text-xs font-medium text-white/50 sm:text-sm">
+                  Predict the score. Boost the bold. Climb the table.
+                </p>
               </div>
             </div>
 
-            <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
-              <div className="hidden md:grid grid-cols-3 gap-3 mr-2">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10">
-                  <Activity className="w-4 h-4 text-red-400 animate-pulse" />
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <div className="hidden grid-cols-3 gap-3 md:grid">
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
+                  <Activity className="h-4 w-4 animate-pulse text-red-400" />
                   <span className="text-xs text-white/70">{stats.liveMatches} Live</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10">
-                  <Calendar className="w-4 h-4 text-emerald-400" />
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
+                  <Calendar className="h-4 w-4 text-emerald-400" />
                   <span className="text-xs text-white/70">{stats.upcomingMatches} Upcoming</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10">
-                  <Target className="w-4 h-4 text-amber-400" />
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
+                  <Target className="h-4 w-4 text-amber-400" />
                   <span className="text-xs text-white/70">{stats.totalPredictions} Picks</span>
                 </div>
               </div>
 
-              <div className="fixed inset-x-3 bottom-3 z-[70] grid grid-cols-4 items-center gap-1 rounded-2xl border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:static sm:z-auto sm:flex sm:rounded-xl sm:border-white/5 sm:bg-[#1a2332] sm:p-1 sm:shadow-none">
+              <div className="hidden items-center gap-1 rounded-xl border border-white/5 bg-[#1a2332] p-1 sm:flex">
                 <button
                   onClick={() => setActiveView('matches')}
-                  className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                     activeView === 'matches'
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                      : 'text-white/60 hover:bg-white/5 hover:text-white'
                   }`}
                 >
-                  <Target className="w-4 h-4" />
-                  <span className="hidden sm:inline">Matches</span>
+                  <Target className="h-4 w-4" />
+                  <span>Matches</span>
                 </button>
                 <button
                   onClick={() => setActiveView('leagues')}
-                  className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
                   title="Private leagues"
                 >
-                  <Users className="w-4 h-4" /><span className="hidden xl:inline">Leagues</span>
+                  <Users className="h-4 w-4" />
+                  <span className="hidden xl:inline">Leagues</span>
                 </button>
                 {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
-                <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-xl px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white sm:rounded-lg" title="Game rules"><BookOpen className="h-4 w-4" /></button>
+                <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-lg px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
                 <button
                   onClick={() => setActiveView('leaderboard')}
-                  className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                     activeView === 'leaderboard'
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                      : 'text-white/60 hover:bg-white/5 hover:text-white'
                   }`}
                 >
-                  <Trophy className="w-4 h-4" />
-                  <span className="hidden sm:inline">Leaderboard</span>
+                  <Trophy className="h-4 w-4" />
+                  <span>Leaderboard</span>
                 </button>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="hidden items-center gap-3 bg-gradient-to-r from-[#1a2332] to-[#141d2b] rounded-xl border border-white/10 p-1.5 sm:flex sm:px-4 sm:py-2">
+                <div className="hidden items-center gap-3 rounded-xl border border-white/10 bg-gradient-to-r from-[#1a2332] to-[#141d2b] p-1.5 sm:flex sm:px-4 sm:py-2">
                   <div className="relative">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-400/20">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-400/20">
                       {profile?.display_name?.[0]?.toUpperCase() || 'U'}
                     </div>
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0a0f1a]" />
+                    <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0a0f1a] bg-emerald-500" />
                   </div>
                   <div className="hidden sm:block">
                     <p className="text-sm font-semibold text-white">{profile?.display_name}</p>
@@ -287,16 +302,78 @@ export function Dashboard() {
 
                 <button
                   onClick={signOut}
-                  className="p-2.5 text-white/60 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 border border-white/5"
+                  className="rounded-xl border border-white/5 p-2.5 text-white/60 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400"
                   title="Sign out"
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="h-5 w-5" />
                 </button>
               </div>
             </div>
           </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2 sm:hidden">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-white/35">Live</p>
+              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-white"><Activity className="h-3.5 w-3.5 text-red-400" />{stats.liveMatches}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-white/35">Upcoming</p>
+              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-white"><Calendar className="h-3.5 w-3.5 text-emerald-400" />{stats.upcomingMatches}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-white/35">Picks</p>
+              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-white"><Target className="h-3.5 w-3.5 text-amber-400" />{stats.totalPredictions}</p>
+            </div>
+          </div>
         </div>
       </header>
+
+      <nav className="fixed inset-x-3 bottom-3 z-[70] rounded-[1.35rem] border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:hidden">
+        <div className="grid items-center gap-1" style={{ gridTemplateColumns: profile?.is_admin ? 'repeat(5, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' }}>
+          <button
+            onClick={() => setActiveView('matches')}
+            className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${
+              activeView === 'matches'
+                ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
+                : 'text-white/55 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Target className="h-5 w-5" />
+            <span>Matches</span>
+          </button>
+          <button
+            onClick={() => setActiveView('leagues')}
+            className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
+          >
+            <Users className="h-5 w-5" />
+            <span>Leagues</span>
+          </button>
+          {profile?.is_admin && (
+            <button
+              onClick={() => setActiveView('health')}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'health' ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
+            >
+              <ShieldCheck className="h-5 w-5" />
+              <span>Admin</span>
+            </button>
+          )}
+          <button onClick={() => setShowRules(true)} className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold text-white/55 transition-all duration-300 hover:bg-white/5 hover:text-white">
+            <BookOpen className="h-5 w-5" />
+            <span>Rules</span>
+          </button>
+          <button
+            onClick={() => setActiveView('leaderboard')}
+            className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${
+              activeView === 'leaderboard'
+                ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
+                : 'text-white/55 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Trophy className="h-5 w-5" />
+            <span>Table</span>
+          </button>
+        </div>
+      </nav>
 
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {!isOnline && <div className="mb-6 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"><WifiOff className="h-4 w-4" />You are offline. Saved data remains visible, but new predictions cannot be submitted.</div>}
