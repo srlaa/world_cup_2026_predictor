@@ -9,7 +9,6 @@ import { RoundSummary } from './RoundSummary';
 import { RulesModal } from './RulesModal';
 import { SystemHealth } from './SystemHealth';
 import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users, BookOpen, ShieldCheck, WifiOff, Bell } from 'lucide-react';
-import mundictoLogo from '../assets/mundicto-logo.png';
 
 const ROUNDS: MatchRound[] = [
   'group_round_1',
@@ -53,6 +52,40 @@ interface LeaderboardEntry {
   total_round_goal_points: number;
   exact_score_bonuses: number;
   profiles: { display_name: string } | null;
+}
+
+function MundictoMark() {
+  return (
+    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-[#41f4c2]/25 bg-[#061017] shadow-xl shadow-[#12d49a]/25 sm:h-14 sm:w-14">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(65,244,194,0.24),transparent_34%),linear-gradient(145deg,rgba(18,212,154,0.18),rgba(4,12,20,0)_58%)]" />
+      <svg viewBox="0 0 64 64" aria-hidden="true" className="relative h-full w-full">
+        <path
+          d="M15 45V18l17 17 17-17v27"
+          fill="none"
+          stroke="url(#mundicto-m)"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="8"
+        />
+        <path
+          d="M22 22v21M42 22v21"
+          fill="none"
+          stroke="rgba(216,255,241,0.28)"
+          strokeLinecap="round"
+          strokeWidth="4"
+        />
+        <circle cx="32" cy="47" r="7" fill="none" stroke="#41f4c2" strokeWidth="3" />
+        <path d="M32 39v16M24 47h16" stroke="#41f4c2" strokeLinecap="round" strokeWidth="2.5" />
+        <defs>
+          <linearGradient id="mundicto-m" x1="12" x2="52" y1="16" y2="48" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#d8fff1" />
+            <stop offset="0.45" stopColor="#12d49a" />
+            <stop offset="1" stopColor="#0ca678" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  );
 }
 
 export function Dashboard() {
@@ -212,15 +245,13 @@ export function Dashboard() {
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <div className="relative shrink-0">
                 <div className="absolute -inset-1 rounded-2xl bg-[#12d49a]/60 blur-lg" />
-                <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-[#41f4c2]/25 bg-[#07141a] shadow-xl shadow-[#12d49a]/25 sm:h-14 sm:w-14">
-                  <img src={mundictoLogo} alt="Mundicto logo" className="h-full w-full object-cover" />
-                </div>
+                <MundictoMark />
               </div>
               <div className="min-w-0">
-                <h1 className="truncate bg-gradient-to-r from-white via-[#d8fff1] to-[#41f4c2] bg-clip-text text-2xl font-black uppercase tracking-[0.08em] text-transparent sm:text-3xl">
+                <h1 className="truncate bg-gradient-to-r from-white via-[#d8fff1] to-[#41f4c2] bg-clip-text text-2xl font-black uppercase leading-none tracking-[0.08em] text-transparent sm:text-3xl">
                   MUNDICTO
                 </h1>
-                <p className="-mt-0.5 truncate text-xs font-semibold tracking-[0.18em] text-[#41f4c2]/80 sm:text-sm">
+                <p className="mt-1 truncate text-xs font-semibold tracking-[0.14em] text-[#41f4c2]/80 sm:text-sm">
                   World Cup Predictor
                 </p>
               </div>
@@ -250,54 +281,56 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="mt-3 hidden flex-wrap items-center gap-2 md:flex">
-            <div className="inline-flex items-center gap-2 rounded-full border border-red-400/15 bg-red-400/10 px-3 py-1.5">
-              <Activity className="h-4 w-4 shrink-0 animate-pulse text-red-400" />
-              <span className="whitespace-nowrap text-xs font-semibold text-white/75">{stats.liveMatches} Live</span>
+          <div className="mt-4 hidden items-center justify-between gap-4 sm:flex">
+            <div className="inline-flex items-center gap-1 rounded-xl border border-white/5 bg-[#111a27] p-1">
+              <button
+                onClick={() => setActiveView('matches')}
+                className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
+                  activeView === 'matches'
+                    ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Target className="h-4 w-4" />
+                <span>Matches</span>
+              </button>
+              <button
+                onClick={() => setActiveView('leagues')}
+                className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                title="Private leagues"
+              >
+                <Users className="h-4 w-4" />
+                <span>Leagues</span>
+              </button>
+              {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
+              <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-lg px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
+              <button
+                onClick={() => setActiveView('leaderboard')}
+                className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
+                  activeView === 'leaderboard'
+                    ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>Leaderboard</span>
+              </button>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#41f4c2]/15 bg-[#12d49a]/10 px-3 py-1.5">
-              <Calendar className="h-4 w-4 shrink-0 text-[#41f4c2]" />
-              <span className="whitespace-nowrap text-xs font-semibold text-white/75">{stats.upcomingMatches} Upcoming</span>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/15 bg-amber-400/10 px-3 py-1.5">
-              <Target className="h-4 w-4 shrink-0 text-amber-400" />
-              <span className="whitespace-nowrap text-xs font-semibold text-white/75">{stats.totalPredictions} Picks</span>
-            </div>
-          </div>
 
-          <div className="mt-3 hidden items-center gap-1 rounded-xl border border-white/5 bg-[#1a2332] p-1 sm:inline-flex">
-            <button
-              onClick={() => setActiveView('matches')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                activeView === 'matches'
-                  ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
-                  : 'text-white/60 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Target className="h-4 w-4" />
-              <span>Matches</span>
-            </button>
-            <button
-              onClick={() => setActiveView('leagues')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
-              title="Private leagues"
-            >
-              <Users className="h-4 w-4" />
-              <span>Leagues</span>
-            </button>
-            {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
-            <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-lg px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
-            <button
-              onClick={() => setActiveView('leaderboard')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                activeView === 'leaderboard'
-                  ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
-                  : 'text-white/60 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Trophy className="h-4 w-4" />
-              <span>Leaderboard</span>
-            </button>
+            <div className="hidden flex-wrap items-center justify-end gap-2 md:flex">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
+                <Activity className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                <span>{stats.liveMatches} Live</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-[#41f4c2]" />
+                <span>{stats.upcomingMatches} Upcoming</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
+                <Target className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                <span>{stats.totalPredictions} Picks</span>
+              </div>
+            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 sm:hidden">
