@@ -46,6 +46,18 @@ const ROUND_MULTIPLIERS: Record<MatchRound, number> = {
   final: 2,
 };
 
+const ROUND_SHORT_LABELS: Record<MatchRound, string> = {
+  group_round_1: 'R1',
+  group_round_2: 'R2',
+  group_round_3: 'R3',
+  round_of_32: 'R32',
+  round_of_16: 'R16',
+  quarter_finals: 'QF',
+  semi_finals: 'SF',
+  third_place: '3rd',
+  final: 'Final',
+};
+
 interface LeaderboardEntry {
   user_id: string;
   total_match_points: number;
@@ -231,6 +243,11 @@ export function Dashboard() {
 
   const unpredicted = matches.filter((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date() && !predictions[match.id]);
   const nextKickoff = matches.find((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date());
+  const reviewMissingPicks = () => {
+    const firstMissing = unpredicted[0];
+    if (!firstMissing) return;
+    document.getElementById(`match-${firstMissing.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0a0f1a] pb-28 sm:pb-0">
@@ -404,13 +421,24 @@ export function Dashboard() {
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">Missing picks</p>
-                <p className={`mt-2 text-2xl font-black ${unpredicted.length ? 'text-amber-300' : 'text-[#41f4c2]'}`}>{unpredicted.length}</p>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className={`text-2xl font-black ${unpredicted.length ? 'text-amber-300' : 'text-[#41f4c2]'}`}>{unpredicted.length}</p>
+                  {unpredicted.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={reviewMissingPicks}
+                      className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-400/15"
+                    >
+                      Review
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="mb-6">
               <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide [-webkit-mask-image:linear-gradient(90deg,black,black,transparent)] [mask-image:linear-gradient(90deg,black,calc(100%-20px),transparent)]">
-                {ROUNDS.map((round, index) => {
+                {ROUNDS.map((round) => {
                   const roundMatches = matches.filter(m => m.round === round);
                   const isActive = activeTab === round;
                   const finishedCount = roundMatches.filter(m => m.status === 'finished').length;
@@ -419,20 +447,21 @@ export function Dashboard() {
                     <button
                       key={round}
                       onClick={() => setActiveTab(round)}
-                      className={`group relative flex-shrink-0 px-5 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${
+                      title={ROUND_LABELS[round]}
+                      aria-label={`Show ${ROUND_LABELS[round]}`}
+                      className={`group relative flex min-w-[4.25rem] flex-shrink-0 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-300 ${
                         isActive
-                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-xl shadow-emerald-500/30 scale-105'
-                          : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/5'
+                          ? 'scale-105 bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-xl shadow-[#12d49a]/25'
+                          : 'border border-white/5 bg-white/[0.04] text-white/60 hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       {isActive && (
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 blur-xl opacity-50 -z-10" />
+                        <div className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-[#12d49a] to-[#41f4c2] opacity-40 blur-xl" />
                       )}
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{index < 3 ? '⚽' : index < 5 ? '🏆' : '👑'}</span>
-                        <span>{ROUND_LABELS[round]}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>{ROUND_SHORT_LABELS[round]}</span>
                         {finishedCount > 0 && !isActive && (
-                          <span className="ml-1 text-xs bg-white/10 px-1.5 py-0.5 rounded-full">
+                          <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px]">
                             {finishedCount}
                           </span>
                         )}
@@ -455,9 +484,18 @@ export function Dashboard() {
             )}
 
             {unpredicted.length > 0 && (
-              <div className="mb-6 flex items-center gap-3 rounded-xl border border-blue-500/25 bg-blue-500/10 px-4 py-3 text-sm text-blue-100/80">
-                <Bell className="h-5 w-5 shrink-0 text-blue-300" />
-                <span><strong>{unpredicted.length}</strong> {unpredicted.length === 1 ? 'match is' : 'matches are'} still waiting for your prediction in this round. Next kickoff: {new Date(unpredicted[0].kickoff_at).toLocaleString()}.</span>
+              <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/80 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <Bell className="h-5 w-5 shrink-0 text-amber-300" />
+                  <span><strong>{unpredicted.length}</strong> {unpredicted.length === 1 ? 'match needs' : 'matches need'} your prediction.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={reviewMissingPicks}
+                  className="inline-flex items-center justify-center rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100 hover:bg-amber-400/15"
+                >
+                  Review missing picks
+                </button>
               </div>
             )}
 
@@ -489,7 +527,12 @@ export function Dashboard() {
                 {matches.map((match, index) => (
                   <div
                     key={match.id}
-                    className="transform transition-all duration-500"
+                    id={`match-${match.id}`}
+                    className={`scroll-mt-36 transform rounded-2xl transition-all duration-500 ${
+                      unpredicted.some((missingMatch) => missingMatch.id === match.id)
+                        ? 'ring-1 ring-amber-400/20'
+                        : ''
+                    }`}
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <MatchCard
