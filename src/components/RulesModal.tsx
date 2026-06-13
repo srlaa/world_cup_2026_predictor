@@ -11,8 +11,8 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <Rule icon={<Target />} title="Match outcome" text="Pick 1, X or 2 for the score after 90 minutes. Points are the decimal odds x10, rounded up." />
           <Rule icon={<Zap />} title="Exact score" text="Selected group matches and every match from the round of 16 award 50 bonus points for the exact 90-minute score." />
-          <Rule icon={<Flame />} title="Fireball x2" text="A Fireball doubles outcome points only. It never doubles the exact-score or team-to-advance bonus." />
-          <Rule icon={<ShieldCheck />} title="Knockout winner" text="From the round of 32, separately pick who advances. A correct pick awards 25 points and includes extra time and penalties." />
+          <Rule icon={<Flame />} title="Fireball x2" text="A Fireball doubles outcome points only. It never doubles exact-score or knockout-winner bonus points." />
+          <Rule icon={<ShieldCheck />} title="Knockout winner" text="With an X pick, choose who wins after extra time or penalties for +20. With 1/2, that team is selected automatically and earns +8 if it advances after a 90-minute draw." />
           <Rule icon={<Trophy />} title="Round multipliers" text="Quarter-final outcome points are x1.5. Semi-final and final outcome points are x2." />
           <Rule icon={<Target />} title="Round goals" text="Predict total 90-minute goals in a round. Exact is 100 points; every goal away subtracts 2 points. Cancelled matches are void." />
         </div>

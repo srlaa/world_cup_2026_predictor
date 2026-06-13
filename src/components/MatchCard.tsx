@@ -348,11 +348,11 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
             )}
             {requiresAdvancer(match.round) && (
               <div>
-                <p className="text-white/40 text-xs mb-1">To Advance</p>
+                <p className="text-white/40 text-xs mb-1">Eventual Winner</p>
                 <p className={`font-semibold text-sm flex items-center justify-center gap-1 ${
                   prediction.is_advancer_correct ? 'text-blue-300' : 'text-white/60'
                 }`}>
-                  {prediction.predicted_advancing_team}
+                  {prediction.predicted_advancing_team}{prediction.advancement_points > 0 ? ` +${prediction.advancement_points}` : ''}
                   {prediction.is_advancer_correct && <Check className="w-4 h-4" />}
                 </p>
               </div>
@@ -416,6 +416,9 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                       type="button"
                       onClick={() => {
                         setSelectedOutcome(outcome);
+                        if (requiresAdvancer(match.round) && outcome !== 'X') {
+                          setAdvancingTeam(outcome === '1' ? match.home_team : match.away_team);
+                        }
                         if (match.exact_score_enabled) {
                           const [nextHomeScore, nextAwayScore] = scoreForOutcome(outcome, homeScore, awayScore);
                           setHomeScore(nextHomeScore);
@@ -490,7 +493,9 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                       onChange={(e) => {
                         const score = parseInt(e.target.value) || 0;
                         setHomeScore(score);
-                        setSelectedOutcome(outcomeFromPrediction(score, awayScore));
+                        const outcome = outcomeFromPrediction(score, awayScore);
+                        setSelectedOutcome(outcome);
+                        if (requiresAdvancer(match.round) && outcome !== 'X') setAdvancingTeam(outcome === '1' ? match.home_team : match.away_team);
                       }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
                     />
@@ -507,7 +512,9 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                       onChange={(e) => {
                         const score = parseInt(e.target.value) || 0;
                         setAwayScore(score);
-                        setSelectedOutcome(outcomeFromPrediction(homeScore, score));
+                        const outcome = outcomeFromPrediction(homeScore, score);
+                        setSelectedOutcome(outcome);
+                        if (requiresAdvancer(match.round) && outcome !== 'X') setAdvancingTeam(outcome === '1' ? match.home_team : match.away_team);
                       }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
                     />
@@ -517,13 +524,13 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                 </div>
               )}
 
-              {requiresAdvancer(match.round) && (
+              {requiresAdvancer(match.round) && selectedOutcome === 'X' && (
                 <div>
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <label className="block text-xs font-semibold uppercase tracking-wider text-white/50">
-                      {match.round === 'final' ? 'Tournament Winner' : 'Team To Advance'}
+                      {match.round === 'final' ? 'Who Wins The Final?' : 'Who Advances After The Draw?'}
                     </label>
-                    <span className="text-xs font-semibold text-blue-300">+25 pts</span>
+                    <span className="text-xs font-semibold text-blue-300">+20 pts</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {[match.home_team, match.away_team].map((team) => (
@@ -542,7 +549,13 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-white/40">Outcome and exact score are always judged after 90 minutes. This pick covers extra time and penalties.</p>
+                  <p className="mt-2 text-xs text-white/40">This choice covers extra time and penalties. The X and exact score still refer to 90 minutes.</p>
+                </div>
+              )}
+
+              {requiresAdvancer(match.round) && selectedOutcome !== 'X' && (
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-100/70">
+                  Your {selectedOutcome} pick also selects <strong className="text-blue-200">{selectedOutcome === '1' ? match.home_team : match.away_team}</strong> as the eventual winner. If the match is drawn after 90 minutes but that team advances, you receive 8 consolation points.
                 </div>
               )}
 
@@ -562,9 +575,9 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                       <span className="text-sm font-semibold text-amber-400">+50 pts bonus</span>
                     </div>
                   )}
-                  {requiresAdvancer(match.round) && (
+                  {requiresAdvancer(match.round) && selectedOutcome === 'X' && (
                     <div className="ml-2 rounded-lg bg-blue-500/15 px-3 py-1.5 text-sm font-semibold text-blue-300">
-                      +25 pts advance
+                      +20 pts winner
                     </div>
                   )}
                 </div>

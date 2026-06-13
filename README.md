@@ -102,9 +102,11 @@ as the free provider exposes a change, but it cannot guarantee live-score timing
 - Quarter-final outcome points have a `1.5x` round multiplier.
 - Semi-final and final outcome points have a `2x` round multiplier.
 - Boost badges are unavailable after the quarter-finals.
-- From the round of 32, users also select the team that advances. This is
-  independent from the 90-minute outcome and awards 25 points. In the final it
-  represents the tournament winner.
+- From the round of 32, an `X` pick opens a separate eventual-winner choice.
+  Correctly predicting both the 90-minute draw and the winner after extra time
+  or penalties adds 20 points. A `1` or `2` automatically selects that team as
+  eventual winner; if the game is drawn after 90 minutes but that team still
+  advances, the prediction receives 8 consolation points.
 - Cancelled matches are void and do not block round-goal scoring.
 
 Exact-score selections are frozen once all fixtures for a round exist. New API

@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
 
-function score({ odds, multiplier = 1, boost = false, outcome = false, exact = false, advance = false }) {
+function score({ odds, multiplier = 1, boost = false, outcome = false, exact = false, winnerBonus = 0 }) {
   return Math.ceil(outcome ? odds * 10 * multiplier * (boost ? 2 : 1) : 0)
     + (exact ? 50 : 0)
-    + (advance ? 25 : 0);
+    + winnerBonus;
 }
 
 assert.equal(score({ odds: 1.8, outcome: true }), 18, 'group outcome');
 assert.equal(score({ odds: 1.8, outcome: true, boost: true }), 36, 'Fireball doubles outcome');
 assert.equal(score({ odds: 1.8, outcome: true, boost: true, exact: true }), 86, 'exact bonus is not doubled');
 assert.equal(score({ odds: 1.9, outcome: true, multiplier: 1.5 }), 29, 'quarter-final points round up');
-assert.equal(score({ odds: 2.15, outcome: true, multiplier: 2, advance: true }), 68, 'semi-final plus advancer');
-assert.equal(score({ odds: 3, outcome: false, advance: true }), 25, 'advancer is independent of 90-minute outcome');
+assert.equal(score({ odds: 3.2, outcome: true, winnerBonus: 20 }), 52, 'draw plus correct knockout winner');
+assert.equal(score({ odds: 2.15, outcome: false, winnerBonus: 8 }), 8, '1/2 consolation when selected team advances after a draw');
+assert.equal(score({ odds: 3.2, outcome: true, boost: true, winnerBonus: 20 }), 84, 'Fireball does not double winner bonus');
 assert.equal(score({ odds: 3, outcome: false }), 0, 'miss');
 assert.equal(Math.max(0, 100 - Math.abs(14 - 11) * 2), 94, 'round-goal scoring');
 

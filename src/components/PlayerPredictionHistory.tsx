@@ -179,7 +179,7 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
                           </div>
                           {prediction.predicted_advancing_team && (
                             <div className="rounded-xl bg-black/15 p-3">
-                              <p className="text-[11px] uppercase tracking-wide text-white/35">To advance</p>
+                              <p className="text-[11px] uppercase tracking-wide text-white/35">Eventual winner</p>
                               <p className={`mt-1 font-semibold ${prediction.is_advancer_correct ? 'text-blue-300' : 'text-white'}`}>
                                 {prediction.predicted_advancing_team} {prediction.is_advancer_correct ? `+${prediction.advancement_points}` : ''}
                               </p>

@@ -7,7 +7,7 @@ export function RoundSummary({ matches, predictions, roundGoal }: { matches: Mat
   const picks = played.flatMap((match) => predictions[match.id] ? [predictions[match.id]] : []);
   const hits = picks.filter((pick) => pick.is_outcome_correct).length;
   const exact = picks.filter((pick) => pick.is_exact_score_correct).length;
-  const advance = picks.filter((pick) => pick.is_advancer_correct).length;
+  const advance = picks.filter((pick) => pick.advancement_points > 0).length;
   const fireballs = picks.filter((pick) => pick.boost_used && pick.is_outcome_correct).length;
   const points = Math.ceil(picks.reduce((sum, pick) => sum + Number(pick.points_awarded), 0) + Number(roundGoal?.points_awarded ?? 0));
 
@@ -17,7 +17,7 @@ export function RoundSummary({ matches, predictions, roundGoal }: { matches: Mat
       <Stat icon={<Check />} label="Outcomes" value={`${hits}/${picks.length}`} />
       <Stat icon={<X />} label="Misses" value={String(picks.length - hits)} />
       <Stat icon={<Zap />} label="Exact" value={String(exact)} />
-      <Stat icon={<Target />} label="Advance" value={String(advance)} />
+      <Stat icon={<Target />} label="Winner bonuses" value={String(advance)} />
       <Stat icon={<Flame />} label="Fireball hits" value={String(fireballs)} />
     </div>
   </div>;
