@@ -2,8 +2,8 @@ import { Flame, ShieldCheck, Target, Trophy, X, Zap } from 'lucide-react';
 
 export function RulesModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={onClose}>
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border border-white/10 bg-[#101827] p-6 shadow-2xl sm:rounded-3xl sm:p-8" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center overflow-x-hidden bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={onClose}>
+      <div className="max-h-[calc(100dvh-1.5rem)] min-w-0 w-full max-w-3xl overflow-x-hidden overflow-y-auto rounded-3xl border border-white/10 bg-[#101827] p-5 shadow-2xl sm:max-h-[92vh] sm:p-8" onMouseDown={(event) => event.stopPropagation()}>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-400">How to play</p><h2 className="mt-1 text-2xl font-bold text-white">Game rules</h2></div>
           <button onClick={onClose} className="rounded-xl border border-white/10 p-2 text-white/60 hover:bg-white/10"><X className="h-5 w-5" /></button>
@@ -23,5 +23,5 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
 }
 
 function Rule({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">{icon}</div><h3 className="font-bold text-white">{title}</h3><p className="mt-1 text-sm leading-6 text-white/55">{text}</p></div>;
+  return <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4"><div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">{icon}</div><h3 className="font-bold text-white">{title}</h3><p className="mt-1 break-words text-sm leading-6 text-white/55">{text}</p></div>;
 }

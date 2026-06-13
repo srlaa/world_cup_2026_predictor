@@ -198,7 +198,7 @@ export function Dashboard() {
   const unpredicted = matches.filter((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date() && !predictions[match.id]);
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a]">
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0f1a] pb-24 sm:pb-0">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl" />
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
@@ -207,7 +207,7 @@ export function Dashboard() {
 
       <header className="sticky top-0 z-50 bg-[#0a0f1a]/90 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between">
             <div className="flex min-w-0 items-center gap-2 sm:gap-4">
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-500" />
@@ -221,7 +221,7 @@ export function Dashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-3">
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
               <div className="hidden md:grid grid-cols-3 gap-3 mr-2">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10">
                   <Activity className="w-4 h-4 text-red-400 animate-pulse" />
@@ -237,10 +237,10 @@ export function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 bg-[#1a2332] backdrop-blur-sm rounded-xl p-1 border border-white/5">
+              <div className="fixed inset-x-3 bottom-3 z-[70] grid grid-cols-4 items-center gap-1 rounded-2xl border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:static sm:z-auto sm:flex sm:rounded-xl sm:border-white/5 sm:bg-[#1a2332] sm:p-1 sm:shadow-none">
                 <button
                   onClick={() => setActiveView('matches')}
-                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-all duration-300 ${
                     activeView === 'matches'
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -251,16 +251,16 @@ export function Dashboard() {
                 </button>
                 <button
                   onClick={() => setActiveView('leagues')}
-                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                  className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                   title="Private leagues"
                 >
                   <Users className="w-4 h-4" /><span className="hidden xl:inline">Leagues</span>
                 </button>
                 {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
-                <button onClick={() => setShowRules(true)} className="rounded-lg px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
+                <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-xl px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white sm:rounded-lg" title="Game rules"><BookOpen className="h-4 w-4" /></button>
                 <button
                   onClick={() => setActiveView('leaderboard')}
-                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-all duration-300 ${
                     activeView === 'leaderboard'
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
