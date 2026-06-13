@@ -230,6 +230,7 @@ export function Dashboard() {
   }, []);
 
   const unpredicted = matches.filter((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date() && !predictions[match.id]);
+  const nextKickoff = matches.find((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date());
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0a0f1a] pb-28 sm:pb-0">
@@ -239,21 +240,58 @@ export function Dashboard() {
         <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-[#41f4c2]/10 rounded-full blur-3xl" />
       </div>
 
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0f1a]/90 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0f1a]/92 backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <div className="relative shrink-0">
-                <div className="absolute -inset-1 rounded-2xl bg-[#12d49a]/60 blur-lg" />
+                <div className="absolute -inset-1 rounded-2xl bg-[#12d49a]/45 blur-lg" />
                 <MundictoMark />
               </div>
               <div className="min-w-0">
-                <h1 className="truncate bg-gradient-to-r from-white via-[#d8fff1] to-[#41f4c2] bg-clip-text text-2xl font-black uppercase leading-none tracking-[0.08em] text-transparent sm:text-3xl">
+                <h1 className="truncate bg-gradient-to-r from-white via-[#d8fff1] to-[#41f4c2] bg-clip-text text-xl font-black uppercase leading-none tracking-[0.08em] text-transparent sm:text-2xl">
                   MUNDICTO
                 </h1>
-                <p className="mt-1 truncate text-xs font-semibold tracking-[0.14em] text-[#41f4c2]/80 sm:text-sm">
+                <p className="mt-1 truncate text-[10px] font-semibold tracking-[0.16em] text-[#41f4c2]/75 sm:text-xs">
                   World Cup Predictor
                 </p>
+              </div>
+            </div>
+
+            <div className="hidden min-w-0 flex-1 justify-center px-4 sm:flex">
+              <div className="inline-flex items-center gap-1 rounded-xl border border-white/5 bg-[#111a27] p-1">
+                <button
+                  onClick={() => setActiveView('matches')}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
+                    activeView === 'matches'
+                      ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20'
+                      : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Target className="h-4 w-4" />
+                  <span>Matches</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('leagues')}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                  title="Private leagues"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Leagues</span>
+                </button>
+                {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
+                <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-lg px-3 py-1.5 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
+                <button
+                  onClick={() => setActiveView('leaderboard')}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
+                    activeView === 'leaderboard'
+                      ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20'
+                      : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Trophy className="h-4 w-4" />
+                  <span>Leaderboard</span>
+                </button>
               </div>
             </div>
 
@@ -278,73 +316,6 @@ export function Dashboard() {
               >
                 <LogOut className="h-5 w-5" />
               </button>
-            </div>
-          </div>
-
-          <div className="mt-4 hidden items-center justify-between gap-4 sm:flex">
-            <div className="inline-flex items-center gap-1 rounded-xl border border-white/5 bg-[#111a27] p-1">
-              <button
-                onClick={() => setActiveView('matches')}
-                className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                  activeView === 'matches'
-                    ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <Target className="h-4 w-4" />
-                <span>Matches</span>
-              </button>
-              <button
-                onClick={() => setActiveView('leagues')}
-                className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
-                title="Private leagues"
-              >
-                <Users className="h-4 w-4" />
-                <span>Leagues</span>
-              </button>
-              {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
-              <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-lg px-3 py-2 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
-              <button
-                onClick={() => setActiveView('leaderboard')}
-                className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                  activeView === 'leaderboard'
-                    ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <Trophy className="h-4 w-4" />
-                <span>Leaderboard</span>
-              </button>
-            </div>
-
-            <div className="hidden flex-wrap items-center justify-end gap-2 md:flex">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
-                <Activity className="h-3.5 w-3.5 shrink-0 text-red-400" />
-                <span>{stats.liveMatches} Live</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-[#41f4c2]" />
-                <span>{stats.upcomingMatches} Upcoming</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
-                <Target className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-                <span>{stats.totalPredictions} Picks</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-3 gap-2 sm:hidden">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wide text-white/35">Live</p>
-              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-white"><Activity className="h-3.5 w-3.5 text-red-400" />{stats.liveMatches}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wide text-white/35">Upcoming</p>
-              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-white"><Calendar className="h-3.5 w-3.5 text-[#41f4c2]" />{stats.upcomingMatches}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wide text-white/35">Picks</p>
-              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-white"><Target className="h-3.5 w-3.5 text-amber-400" />{stats.totalPredictions}</p>
             </div>
           </div>
         </div>
@@ -406,7 +377,38 @@ export function Dashboard() {
         )}
         {activeView === 'matches' && (
           <>
-            <div className="mb-8">
+            <div className="mb-6 grid gap-3 md:grid-cols-4">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#41f4c2]/70">Tournament pulse</p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/80">
+                    <Activity className="h-4 w-4 text-red-400" />
+                    {stats.liveMatches} live
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/80">
+                    <Calendar className="h-4 w-4 text-[#41f4c2]" />
+                    {stats.upcomingMatches} upcoming
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/80">
+                    <Target className="h-4 w-4 text-amber-400" />
+                    {stats.totalPredictions} picks made
+                  </span>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">Next kickoff</p>
+                <p className="mt-2 truncate text-sm font-semibold text-white/80">
+                  {nextKickoff ? `${nextKickoff.home_team} vs ${nextKickoff.away_team}` : 'No upcoming match'}
+                </p>
+                {nextKickoff && <p className="mt-1 text-xs text-white/45">{new Date(nextKickoff.kickoff_at).toLocaleString()}</p>}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">Missing picks</p>
+                <p className={`mt-2 text-2xl font-black ${unpredicted.length ? 'text-amber-300' : 'text-[#41f4c2]'}`}>{unpredicted.length}</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
               <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide [-webkit-mask-image:linear-gradient(90deg,black,black,transparent)] [mask-image:linear-gradient(90deg,black,calc(100%-20px),transparent)]">
                 {ROUNDS.map((round, index) => {
                   const roundMatches = matches.filter(m => m.round === round);
