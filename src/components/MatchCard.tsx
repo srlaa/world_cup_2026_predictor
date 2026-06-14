@@ -1,8 +1,10 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase, type Match, type Prediction, ROUND_LABELS, type MatchRound } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useDialog } from '../hooks/useDialog';
 import { getCountryFlag } from '../lib/countries';
-import { Clock, MapPin, Lock, Check, Target, Zap, TrendingUp, ChevronDown, ChevronUp, Radio, Flag, Flame } from 'lucide-react';
+import { Clock, MapPin, Lock, Check, Target, Zap, TrendingUp, ChevronDown, ChevronUp, Radio, Flag, Flame, X } from 'lucide-react';
 
 interface MatchCardProps {
   match: Match;
@@ -102,6 +104,10 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
     const interval = setInterval(checkLock, 1000);
     return () => clearInterval(interval);
   }, [match.kickoff_at, editing]);
+
+  const predictionDialogRef = useDialog(editing, () => {
+    if (!saving) setEditing(false);
+  });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -338,7 +344,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
       )}
 
       {isFinished && prediction && (
-        <div className="bg-gradient-to-b from-white/[0.06] to-transparent rounded-xl p-4 border border-white/10 mt-2">
+        <div className="mt-2 min-h-[7.5rem] rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent p-4">
           <div className={`grid gap-3 text-center ${match.exact_score_enabled || requiresAdvancer(match.round) ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
             <div>
               <p className="text-white/40 text-xs mb-1">Your Pick</p>
@@ -392,6 +398,27 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
         </div>
       )}
 
+      {isFinished && !prediction && (
+        <div className="mt-2 min-h-[7.5rem] rounded-xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div>
+              <p className="mb-1 text-xs text-white/40">Your Pick</p>
+              <p className="text-sm font-semibold text-white/35">No pick</p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs text-white/40">Result</p>
+              <p className="text-sm font-semibold text-white">
+                {actualOutcome ? getOutcomeLabel(actualOutcome) : '-'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-center border-t border-white/10 pt-3">
+            <span className="text-base font-bold text-white/35">+0 pts</span>
+          </div>
+        </div>
+      )}
+
       {!isLocked && !isLive && !isFinished && (
         <>
           {!editing && !prediction && (
@@ -416,8 +443,29 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
             </button>
           )}
 
-          {editing && (
-            <form onSubmit={handleSubmit} className="space-y-5 animate-fadeIn">
+          {editing && createPortal((
+            <div
+              className="fixed inset-0 z-[1000] flex items-end justify-center bg-[#03070d]/85 p-0 backdrop-blur-md sm:items-center sm:p-6"
+              onMouseDown={() => !saving && setEditing(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Edit prediction for ${match.home_team} versus ${match.away_team}`}
+            >
+              <div
+                ref={predictionDialogRef}
+                className="max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl border border-white/10 bg-[#101827] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:max-h-[90dvh] sm:rounded-3xl sm:p-6"
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <div className="mb-5 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#41f4c2]/70">Match prediction</p>
+                    <h3 className="mt-1 truncate text-lg font-bold text-white">{homeFlag} {match.home_team} <span className="text-white/30">vs</span> {awayFlag} {match.away_team}</h3>
+                  </div>
+                  <button type="button" onClick={() => setEditing(false)} disabled={saving} className="shrink-0 rounded-xl border border-white/10 p-2.5 text-white/60 hover:bg-white/10 hover:text-white" aria-label="Close prediction editor">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-5 animate-fadeIn">
               <div>
                 <label className="block text-xs font-semibold text-white/50 mb-3 uppercase tracking-wider">
                   Match Outcome
@@ -623,8 +671,10 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                   )}
                 </button>
               </div>
-            </form>
-          )}
+                </form>
+              </div>
+            </div>
+          ), document.body)}
         </>
       )}
     </div>

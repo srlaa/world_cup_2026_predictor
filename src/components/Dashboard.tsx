@@ -8,7 +8,9 @@ import { LeaguePanel } from './LeaguePanel';
 import { RoundSummary } from './RoundSummary';
 import { RulesModal } from './RulesModal';
 import { SystemHealth } from './SystemHealth';
-import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users, BookOpen, ShieldCheck, WifiOff } from 'lucide-react';
+import { MundictoBrand } from './MundictoBrand';
+import { getCountryFlag } from '../lib/countries';
+import { Trophy, Target, LogOut, Flame, Zap, Crown, Calendar, TrendingUp, Users, BookOpen, ShieldCheck, WifiOff } from 'lucide-react';
 
 const ROUNDS: MatchRound[] = [
   'group_round_1',
@@ -66,40 +68,6 @@ interface LeaderboardEntry {
   profiles: { display_name: string } | null;
 }
 
-function MundictoMark() {
-  return (
-    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-[#41f4c2]/25 bg-[#061017] shadow-xl shadow-[#12d49a]/25 sm:h-14 sm:w-14">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(65,244,194,0.24),transparent_34%),linear-gradient(145deg,rgba(18,212,154,0.18),rgba(4,12,20,0)_58%)]" />
-      <svg viewBox="0 0 64 64" aria-hidden="true" className="relative h-full w-full">
-        <path
-          d="M15 45V18l17 17 17-17v27"
-          fill="none"
-          stroke="url(#mundicto-m)"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="8"
-        />
-        <path
-          d="M22 22v21M42 22v21"
-          fill="none"
-          stroke="rgba(216,255,241,0.28)"
-          strokeLinecap="round"
-          strokeWidth="4"
-        />
-        <circle cx="32" cy="47" r="7" fill="none" stroke="#41f4c2" strokeWidth="3" />
-        <path d="M32 39v16M24 47h16" stroke="#41f4c2" strokeLinecap="round" strokeWidth="2.5" />
-        <defs>
-          <linearGradient id="mundicto-m" x1="12" x2="52" y1="16" y2="48" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#d8fff1" />
-            <stop offset="0.45" stopColor="#12d49a" />
-            <stop offset="1" stopColor="#0ca678" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-  );
-}
-
 export function Dashboard() {
   const { user, profile, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<MatchRound>('group_round_1');
@@ -115,6 +83,7 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ totalPredictions: 0, liveMatches: 0, upcomingMatches: 0 });
   const initialRoundSelected = useRef(false);
+  const fetchRequestId = useRef(0);
 
   useEffect(() => {
     if (!user || initialRoundSelected.current) return;
@@ -139,6 +108,7 @@ export function Dashboard() {
 
   const fetchData = useCallback(async (showLoading = true) => {
     if (!user) return;
+    const requestId = ++fetchRequestId.current;
     if (showLoading) setLoading(true);
     setError(null);
     try {
@@ -148,6 +118,7 @@ export function Dashboard() {
         .eq('round', activeTab)
         .order('kickoff_at', { ascending: true });
       if (matchesError) throw matchesError;
+      if (requestId !== fetchRequestId.current) return;
 
       if (matchesData) setMatches(matchesData);
 
@@ -168,6 +139,7 @@ export function Dashboard() {
       if (upcomingResult.error) throw upcomingResult.error;
       if (predictionCountResult.error) throw predictionCountResult.error;
       if (predictionsResult.error) throw predictionsResult.error;
+      if (requestId !== fetchRequestId.current) return;
 
       const predictionsData = predictionsResult.data;
       if (predictionsData) {
@@ -190,13 +162,14 @@ export function Dashboard() {
         .eq('round', activeTab)
         .maybeSingle();
       if (roundGoalError) throw roundGoalError;
+      if (requestId !== fetchRequestId.current) return;
 
       setRoundGoalPrediction(roundGoalData);
     } catch (fetchError) {
       console.error('Error fetching data:', fetchError);
       setError(fetchError instanceof Error ? fetchError.message : 'Could not load dashboard data');
     } finally {
-      setLoading(false);
+      if (requestId === fetchRequestId.current) setLoading(false);
     }
   }, [activeTab, user]);
 
@@ -241,12 +214,32 @@ export function Dashboard() {
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
   }, []);
 
-  const unpredicted = matches.filter((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date() && !predictions[match.id]);
+  const upcomingRoundMatches = matches.filter((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date());
+  const unpredicted = upcomingRoundMatches.filter((match) => !predictions[match.id]);
+  const completedRoundPicks = upcomingRoundMatches.length - unpredicted.length;
+  const roundPickProgress = upcomingRoundMatches.length > 0
+    ? (completedRoundPicks / upcomingRoundMatches.length) * 100
+    : 100;
   const nextKickoff = matches.find((match) => match.status === 'scheduled' && new Date(match.kickoff_at) > new Date());
+  const nextKickoffDate = nextKickoff ? new Date(nextKickoff.kickoff_at) : null;
+  const nextKickoffDay = nextKickoffDate?.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const nextKickoffTime = nextKickoffDate?.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const nextHomeFlag = nextKickoff ? getCountryFlag(nextKickoff.home_team) : null;
+  const nextAwayFlag = nextKickoff ? getCountryFlag(nextKickoff.away_team) : null;
   const reviewMissingPicks = () => {
     const firstMissing = unpredicted[0];
     if (!firstMissing) return;
     document.getElementById(`match-${firstMissing.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  const changeRound = (round: MatchRound) => {
+    if (round === activeTab) return;
+    fetchRequestId.current += 1;
+    setLoading(true);
+    setMatches([]);
+    setPredictions({});
+    setRoundGoalPrediction(null);
+    setError(null);
+    setActiveTab(round);
   };
 
   return (
@@ -260,20 +253,7 @@ export function Dashboard() {
       <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0f1a]/92 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-              <div className="relative shrink-0">
-                <div className="absolute -inset-1 rounded-2xl bg-[#12d49a]/45 blur-lg" />
-                <MundictoMark />
-              </div>
-              <div className="min-w-0">
-                <h1 className="truncate bg-gradient-to-r from-white via-[#d8fff1] to-[#41f4c2] bg-clip-text text-xl font-black uppercase leading-none tracking-[0.08em] text-transparent sm:text-2xl">
-                  MUNDICTO
-                </h1>
-                <p className="mt-1 truncate text-[10px] font-semibold tracking-[0.16em] text-[#41f4c2]/75 sm:text-xs">
-                  World Cup Predictor
-                </p>
-              </div>
-            </div>
+            <MundictoBrand compact />
 
             <div className="hidden min-w-0 flex-1 justify-center px-4 sm:flex">
               <div className="inline-flex items-center gap-1 rounded-xl border border-white/5 bg-[#111a27] p-1">
@@ -338,7 +318,7 @@ export function Dashboard() {
         </div>
       </header>
 
-      <nav className="fixed inset-x-3 bottom-3 z-[70] rounded-[1.35rem] border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:hidden">
+      <nav className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[70] rounded-[1.35rem] border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:hidden">
         <div className="grid items-center gap-1" style={{ gridTemplateColumns: profile?.is_admin ? 'repeat(5, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' }}>
           <button
             onClick={() => setActiveView('matches')}
@@ -394,49 +374,137 @@ export function Dashboard() {
         )}
         {activeView === 'matches' && (
           <>
-            <div className="mb-6 grid gap-3 md:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 md:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#41f4c2]/70">Tournament pulse</p>
-                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
-                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/80">
-                    <Activity className="h-4 w-4 text-red-400" />
-                    {stats.liveMatches} live
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/80">
-                    <Calendar className="h-4 w-4 text-[#41f4c2]" />
-                    {stats.upcomingMatches} upcoming
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/80">
-                    <Target className="h-4 w-4 text-amber-400" />
-                    {stats.totalPredictions} picks made
-                  </span>
+            <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-[1fr_1fr_0.85fr]">
+              <div className="col-span-2 flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 lg:col-span-1">
+                <div className="flex min-h-7 items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#41f4c2]/70">Tournament pulse</p>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/25">WC 2026</span>
+                </div>
+                <div className="relative mt-3 grid flex-1 grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.045] to-[#061017]/30">
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-red-400/40 via-[#41f4c2]/35 to-amber-300/40" />
+                  <div className="flex min-w-0 flex-col justify-center px-4 py-3">
+                    <p className="text-2xl font-black leading-none text-white">{stats.liveMatches}</p>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <span className={`h-1.5 w-1.5 rounded-full bg-red-400 ${stats.liveMatches ? 'animate-pulse' : 'opacity-45'}`} />
+                      <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-white/40">Live now</p>
+                    </div>
+                  </div>
+                  <div className="flex min-w-0 flex-col justify-center border-x border-white/10 px-4 py-3">
+                    <p className="text-2xl font-black leading-none text-white">{stats.upcomingMatches}</p>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <Calendar className="h-3 w-3 shrink-0 text-[#41f4c2]/70" />
+                      <p className="truncate text-[10px] font-bold uppercase tracking-[0.13em] text-white/40">Upcoming</p>
+                    </div>
+                  </div>
+                  <div className="flex min-w-0 flex-col justify-center px-4 py-3">
+                    <p className="text-2xl font-black leading-none text-white">{stats.totalPredictions}</p>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <Target className="h-3 w-3 shrink-0 text-amber-300/70" />
+                      <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-white/40">Your picks</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">Next kickoff</p>
-                <p className="mt-2 truncate text-sm font-semibold text-white/80">
-                  {nextKickoff ? `${nextKickoff.home_team} vs ${nextKickoff.away_team}` : 'No upcoming match'}
-                </p>
-                {nextKickoff && <p className="mt-1 text-xs text-white/45">{new Date(nextKickoff.kickoff_at).toLocaleString()}</p>}
+
+              <div className="relative col-span-2 overflow-hidden rounded-2xl border border-[#41f4c2]/15 bg-gradient-to-br from-[#12d49a]/12 via-white/[0.045] to-white/[0.025] p-4 shadow-xl shadow-black/10 sm:col-span-1">
+                <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#12d49a]/15 blur-2xl" />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex min-h-7 items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/40">Next kickoff</p>
+                    {nextKickoffDate && (
+                      <p className="shrink-0 text-[11px] font-bold text-[#41f4c2]">{nextKickoffDay} <span className="mx-1 text-white/20">·</span> <span className="text-white/55">{nextKickoffTime}</span></p>
+                    )}
+                  </div>
+
+                  {nextKickoff ? (
+                    <div className="mt-3 flex flex-1 items-center rounded-2xl border border-white/10 bg-[#061017]/35 px-3 py-3">
+                      <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="text-3xl leading-none">{nextHomeFlag}</span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-white">{nextKickoff.home_team}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/35">Home</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center gap-1 px-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#41f4c2]/70" />
+                          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/30">vs</span>
+                        </div>
+                        <div className="flex min-w-0 items-center justify-end gap-2.5 text-right">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-white">{nextKickoff.away_team}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/35">Away</p>
+                          </div>
+                          <span className="text-3xl leading-none">{nextAwayFlag}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-white/10 bg-[#061017]/45 p-4">
+                      <p className="text-sm font-black text-white">No upcoming match</p>
+                      <p className="mt-1 text-xs font-medium text-white/45">All scheduled matches are already covered.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">Missing picks</p>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <p className={`text-2xl font-black ${unpredicted.length ? 'text-amber-300' : 'text-[#41f4c2]'}`}>{unpredicted.length}</p>
-                  {unpredicted.length > 0 && (
+
+              <div className={`col-span-2 flex h-full flex-col rounded-2xl border p-4 shadow-xl shadow-black/10 sm:col-span-1 ${
+                unpredicted.length
+                  ? 'border-amber-300/20 bg-amber-300/[0.07]'
+                  : 'border-[#41f4c2]/15 bg-[#12d49a]/[0.07]'
+              }`}>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/40">Missing picks</p>
+                  <Target className={`h-4 w-4 ${unpredicted.length ? 'text-amber-300/70' : 'text-[#41f4c2]/70'}`} />
+                </div>
+
+                <div className="my-auto py-3 text-center">
+                  <p className={`text-4xl font-black leading-none ${unpredicted.length ? 'text-amber-300' : 'text-[#41f4c2]'}`}>{unpredicted.length}</p>
+                  <p className="mt-1.5 text-xs font-semibold text-white/50">
+                    {unpredicted.length ? 'matches still need a pick' : 'Every match is covered'}
+                  </p>
+                </div>
+
+                <div className="mt-auto">
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-white/40">
+                    <span>{completedRoundPicks} of {upcomingRoundMatches.length} picked</span>
+                    <span>{Math.round(roundPickProgress)}%</span>
+                  </div>
+                  <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+                    <div
+                      className={`h-full rounded-full transition-all ${unpredicted.length ? 'bg-amber-300/70' : 'bg-[#41f4c2]'}`}
+                      style={{ width: `${roundPickProgress}%` }}
+                    />
+                  </div>
+                  {unpredicted.length > 0 ? (
                     <button
                       type="button"
                       onClick={reviewMissingPicks}
-                      className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-400/15"
+                      className="w-full rounded-xl border border-amber-300/25 bg-amber-300/12 px-4 py-2 text-xs font-bold text-amber-100 transition hover:bg-amber-300/18"
                     >
-                      Review
+                      Review missing picks
                     </button>
+                  ) : (
+                    <div className="rounded-xl border border-[#41f4c2]/15 bg-[#12d49a]/10 px-4 py-2 text-center text-xs font-bold text-[#41f4c2]">
+                      Ready for kickoff
+                    </div>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="mb-6">
+              <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-white">{ROUND_LABELS[activeTab]}</p>
+                  <p className="text-xs text-white/40">
+                    {matches.filter((match) => match.status === 'finished').length} of {matches.filter((match) => match.status !== 'cancelled').length} matches finished
+                  </p>
+                </div>
+                {ROUND_MULTIPLIERS[activeTab] > 1 && (
+                  <span className="shrink-0 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-300">x{ROUND_MULTIPLIERS[activeTab]} points</span>
+                )}
+              </div>
               <div className="grid auto-cols-[minmax(4.25rem,1fr)] grid-flow-col gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.035] p-1 scrollbar-hide md:grid-flow-row md:grid-cols-9 md:overflow-visible">
                 {ROUNDS.map((round) => {
                   const roundMatches = matches.filter(m => m.round === round);
@@ -446,7 +514,7 @@ export function Dashboard() {
                   return (
                     <button
                       key={round}
-                      onClick={() => setActiveTab(round)}
+                      onClick={() => changeRound(round)}
                       title={ROUND_LABELS[round]}
                       aria-label={`Show ${ROUND_LABELS[round]}`}
                       className={`group relative flex min-w-[4.25rem] items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 md:min-w-0 ${
@@ -472,9 +540,10 @@ export function Dashboard() {
               </div>
             </div>
 
-            {matches.length > 0 && (
+            {!loading && matches.length > 0 && (
               <div className="mb-8 animate-fadeIn">
                 <RoundGoalForm
+                  key={activeTab}
                   round={activeTab}
                   roundStartAt={matches[0].kickoff_at}
                   existingPrediction={roundGoalPrediction || undefined}
@@ -484,12 +553,6 @@ export function Dashboard() {
             )}
 
             <RoundSummary matches={matches} predictions={predictions} roundGoal={roundGoalPrediction} />
-
-            {matches.length > 0 && ROUND_MULTIPLIERS[activeTab] > 1 && (
-              <div className="mb-6 inline-flex items-center rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
-                Round outcome multiplier: x{ROUND_MULTIPLIERS[activeTab]}
-              </div>
-            )}
 
             {loading ? (
               <div className="grid gap-5 2xl:grid-cols-2">
@@ -563,6 +626,7 @@ export function Dashboard() {
 function Leaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardEntry | null>(null);
   const { user } = useAuth();
 
@@ -574,6 +638,7 @@ function Leaderboard() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         const { data, error: leaderboardError } = await supabase
           .from('user_scores')
@@ -600,6 +665,7 @@ function Leaderboard() {
         }
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
+        setLoadError(error instanceof Error ? error.message : 'Could not load leaderboard');
       } finally {
         setLoading(false);
       }
@@ -619,6 +685,9 @@ function Leaderboard() {
       </div>
     );
   }
+
+  const currentUserIndex = entries.findIndex((entry) => entry.user_id === user?.id);
+  const currentUserEntry = currentUserIndex >= 0 ? entries[currentUserIndex] : null;
 
   return (
     <div className="animate-fadeIn">
@@ -647,6 +716,30 @@ function Leaderboard() {
         </div>
       </div>
 
+      {loadError && (
+        <div className="mb-6 rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-200">
+          <p className="font-semibold">Leaderboard could not be loaded.</p>
+          <p className="mt-1 text-red-200/70">{loadError}</p>
+        </div>
+      )}
+
+      {currentUserEntry && (
+        <button
+          type="button"
+          onClick={() => setSelectedPlayer(currentUserEntry)}
+          className="mb-6 flex w-full items-center justify-between gap-4 rounded-2xl border border-[#41f4c2]/20 bg-[#12d49a]/10 px-4 py-3 text-left hover:bg-[#12d49a]/15"
+        >
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#41f4c2]/70">Your position</p>
+            <p className="mt-1 font-semibold text-white">#{currentUserIndex + 1} of {entries.length}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xl font-black text-[#41f4c2]">{totalPoints(currentUserEntry)}</p>
+            <p className="text-xs text-white/40">points · view picks</p>
+          </div>
+        </button>
+      )}
+
       {entries.length === 0 ? (
         <div className="text-center py-20 bg-gradient-to-b from-white/5 to-transparent border border-white/5 rounded-2xl">
           <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center ring-1 ring-white/10">
@@ -657,7 +750,7 @@ function Leaderboard() {
         </div>
       ) : (
         <>
-          {entries[0] && (
+          {entries[0] && currentUserIndex !== 0 && (
             <div className="mb-8 bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/5 border border-amber-500/20 rounded-2xl p-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl" />
               <div className="relative flex items-center gap-4 sm:gap-6">

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Lock, Mail, User, Trophy, Shield, Target, Users, ChevronRight } from 'lucide-react';
+import { Lock, Mail, User, Shield, Target, Users, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { MundictoBrand, MundictoMark } from './MundictoBrand';
 
 interface LoginPageProps {
   onToggleForm: () => void;
@@ -13,6 +14,7 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -42,15 +44,7 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
         <div className="absolute -bottom-20 right-1/4 w-80 h-80 bg-emerald-600/15 rounded-full blur-3xl" />
 
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
-              <Trophy className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">World Cup 2026</h1>
-              <p className="text-emerald-400/80">Predictor Challenge</p>
-            </div>
-          </div>
+          <div className="mb-10"><MundictoBrand /></div>
 
           <h2 className="text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
             Predict. <br />
@@ -93,11 +87,7 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
 
         <div className="relative w-full max-w-md">
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 mb-4 shadow-xl shadow-emerald-500/30">
-              <Trophy className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-white mb-2">World Cup 2026</h1>
-            <p className="text-white/50">Predictor Challenge</p>
+            <MundictoBrand centered />
           </div>
 
           <div className="bg-gradient-to-b from-white/[0.07] to-transparent border border-white/10 rounded-2xl p-8 shadow-2xl">
@@ -116,11 +106,13 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Email</label>
+                <label htmlFor="login-email" className="block text-sm font-medium text-white/70 mb-2">Email</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                   <input
                     type="email"
+                    id="login-email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
@@ -131,17 +123,22 @@ export function LoginPage({ onToggleForm }: LoginPageProps) {
               </div>
 
               <div>
-                <div className="mb-2 flex items-center justify-between"><label className="block text-sm font-medium text-white/70">Password</label><button type="button" onClick={resetPassword} className="text-xs font-semibold text-emerald-400 hover:text-emerald-300">Forgot password?</button></div>
+                <div className="mb-2 flex items-center justify-between"><label htmlFor="login-password" className="block text-sm font-medium text-white/70">Password</label><button type="button" onClick={resetPassword} className="text-xs font-semibold text-emerald-400 hover:text-emerald-300">Forgot password?</button></div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                   <input
-                    type="password"
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-12 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
                     placeholder="Enter your password"
                     required
                   />
+                  <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-white/35 hover:text-white" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -188,7 +185,7 @@ export function UpdatePasswordPage() {
     if (result.error) setError(result.error.message);
     setLoading(false);
   };
-  return <div className="flex min-h-screen items-center justify-center bg-[#0a0f1a] p-6"><form onSubmit={submit} className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8"><Trophy className="mb-5 h-10 w-10 text-emerald-400" /><h1 className="text-2xl font-bold text-white">Set a new password</h1><p className="mt-2 text-sm text-white/50">Choose a new password for your predictor account.</p>{error && <p className="mt-5 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required placeholder="New password" className="mt-6 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-emerald-500/50" /><button disabled={loading} className="mt-4 w-full rounded-xl bg-emerald-500 py-3 font-semibold text-white disabled:opacity-50">{loading ? 'Updating...' : 'Update password'}</button><button type="button" onClick={finishPasswordRecovery} className="mt-3 w-full py-2 text-sm text-white/50">Cancel</button></form></div>;
+  return <div className="flex min-h-screen items-center justify-center bg-[#0a0f1a] p-6"><form onSubmit={submit} className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl"><div className="mb-7"><MundictoBrand /></div><h1 className="text-2xl font-bold text-white">Set a new password</h1><p className="mt-2 text-sm text-white/50">Choose a new password for your Mundicto account.</p>{error && <p className="mt-5 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}<input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required placeholder="New password" className="mt-6 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-[#41f4c2]/50" /><button disabled={loading} className="mt-4 w-full rounded-xl bg-[#12d49a] py-3 font-semibold text-[#061017] disabled:opacity-50">{loading ? 'Updating...' : 'Update password'}</button><button type="button" onClick={finishPasswordRecovery} className="mt-3 w-full py-2 text-sm text-white/50">Cancel</button></form></div>;
 }
 
 export function RegisterPage({ onToggleForm }: LoginPageProps) {
@@ -199,6 +196,7 @@ export function RegisterPage({ onToggleForm }: LoginPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -235,9 +233,7 @@ export function RegisterPage({ onToggleForm }: LoginPageProps) {
         </div>
 
         <div className="relative w-full max-w-md bg-gradient-to-b from-white/[0.07] to-transparent border border-white/10 rounded-2xl p-8 shadow-2xl text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 mb-6 shadow-xl shadow-emerald-500/30">
-            <User className="w-10 h-10 text-white" />
-          </div>
+          <div className="mb-6 flex justify-center"><MundictoMark /></div>
           <h2 className="text-2xl font-bold text-white mb-3">Account Created!</h2>
           <p className="text-white/50 mb-8">Check your email to confirm your account and start making predictions.</p>
           <button
@@ -262,11 +258,8 @@ export function RegisterPage({ onToggleForm }: LoginPageProps) {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 mb-4 shadow-xl shadow-emerald-500/30">
-            <Trophy className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-2">World Cup 2026</h1>
-          <p className="text-white/50">Join the prediction challenge</p>
+          <MundictoBrand centered />
+          <p className="mt-4 text-white/50">Join the prediction challenge</p>
         </div>
 
         <div className="bg-gradient-to-b from-white/[0.07] to-transparent border border-white/10 rounded-2xl p-8 shadow-2xl">
@@ -284,11 +277,13 @@ export function RegisterPage({ onToggleForm }: LoginPageProps) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">Display Name</label>
+              <label htmlFor="register-name" className="block text-sm font-medium text-white/70 mb-2">Display Name</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                 <input
                   type="text"
+                  id="register-name"
+                  autoComplete="name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
@@ -301,11 +296,13 @@ export function RegisterPage({ onToggleForm }: LoginPageProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">Email</label>
+              <label htmlFor="register-email" className="block text-sm font-medium text-white/70 mb-2">Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                 <input
                   type="email"
+                  id="register-email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
@@ -316,18 +313,23 @@ export function RegisterPage({ onToggleForm }: LoginPageProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">Password</label>
+              <label htmlFor="register-password" className="block text-sm font-medium text-white/70 mb-2">Password</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                 <input
-                  type="password"
+                  id="register-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-12 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
                   placeholder="Min. 6 characters"
                   required
                   minLength={6}
                 />
+                <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-white/35 hover:text-white" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 

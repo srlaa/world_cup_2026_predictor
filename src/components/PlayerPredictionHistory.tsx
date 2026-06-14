@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, Clock, Flame, Lock, Target, X, Zap } from 'lucide-react';
 import { ROUND_LABELS, supabase, type MatchRound, type MatchStatus } from '../lib/supabase';
 import { getCountryFlag } from '../lib/countries';
+import { useDialog } from '../hooks/useDialog';
 
 type VisibleMatchPrediction = {
   prediction_id: string;
@@ -78,24 +79,27 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
     void load();
   }, [userId]);
 
+  const dialogRef = useDialog(true, onClose);
+
   return (
-    <div className="fixed inset-0 z-[999] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-start sm:p-6 sm:pt-24" onMouseDown={onClose}>
-      <button
-        onClick={onClose}
-        className="fixed right-4 top-4 z-[1000] rounded-2xl border border-white/15 bg-[#101827] p-3 text-white shadow-2xl shadow-black/40 hover:bg-white/10 sm:right-6 sm:top-6"
-        aria-label="Close prediction history"
-      >
-        <X className="h-5 w-5" />
-      </button>
+    <div className="fixed inset-0 z-[999] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-start sm:p-6 sm:pt-24" onMouseDown={onClose} role="dialog" aria-modal="true" aria-label={`Prediction history for ${displayName}`}>
       <div
+        ref={dialogRef}
         className="h-[92dvh] w-full max-w-4xl overflow-hidden rounded-t-3xl border border-white/10 bg-[#101827] shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-7rem)] sm:rounded-3xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-[#101827]/95 px-5 py-4 pr-20 backdrop-blur sm:px-7 sm:pr-20">
-          <div>
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-white/10 bg-[#101827]/95 px-5 py-4 backdrop-blur sm:px-7">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Prediction history</p>
-            <h3 className="mt-1 text-xl font-bold text-white">{displayName}{isCurrentUser ? ' (You)' : ''}</h3>
+            <h3 className="mt-1 truncate text-xl font-bold text-white">{displayName}{isCurrentUser ? ' (You)' : ''}</h3>
           </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 rounded-2xl border border-white/15 bg-white/[0.04] p-3 text-white/80 hover:bg-white/10 hover:text-white"
+            aria-label="Close prediction history"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <div className="h-[calc(92dvh-82px)] overflow-y-auto p-5 pb-24 sm:h-auto sm:max-h-[calc(100dvh-12rem)] sm:p-7">
@@ -176,20 +180,20 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
                           </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
                           <div className="rounded-xl bg-black/15 p-3">
                             <p className="text-[11px] uppercase tracking-wide text-white/35">Pick</p>
                             <p className="mt-1 font-semibold text-white">{outcomeLabel(prediction.predicted_outcome, prediction.home_team, prediction.away_team)}</p>
                           </div>
                           {prediction.predicted_advancing_team && (
-                            <div className="rounded-xl bg-black/15 p-3">
+                            <div className="hidden rounded-xl bg-black/15 p-3 sm:block">
                               <p className="text-[11px] uppercase tracking-wide text-white/35">Eventual winner</p>
                               <p className={`mt-1 font-semibold ${prediction.is_advancer_correct ? 'text-blue-300' : 'text-white'}`}>
                                 {prediction.predicted_advancing_team} {prediction.is_advancer_correct ? `+${prediction.advancement_points}` : ''}
                               </p>
                             </div>
                           )}
-                          <div className="rounded-xl bg-black/15 p-3">
+                          <div className="hidden rounded-xl bg-black/15 p-3 sm:block">
                             <p className="text-[11px] uppercase tracking-wide text-white/35">Exact score</p>
                             <p className={`mt-1 font-semibold ${finished && prediction.is_exact_score_correct ? 'text-amber-300' : 'text-white'}`}>
                               {scorePick ?? 'Not selected'} {prediction.is_exact_score_correct && <Zap className="inline h-3.5 w-3.5" />}
@@ -206,6 +210,15 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
                             <p className="mt-1 text-lg font-bold text-emerald-300">{finished ? Math.ceil(Number(prediction.points_awarded)) : 'Pending'}</p>
                           </div>
                         </div>
+                        {(prediction.predicted_advancing_team || scorePick) && (
+                          <details className="mt-3 rounded-xl border border-white/10 bg-black/10 px-3 py-2 sm:hidden">
+                            <summary className="cursor-pointer text-xs font-semibold text-white/50">More prediction details</summary>
+                            <div className="mt-2 space-y-1 text-sm text-white/65">
+                              {scorePick && <p>Exact score: <strong className="text-white">{scorePick}</strong></p>}
+                              {prediction.predicted_advancing_team && <p>Eventual winner: <strong className="text-white">{prediction.predicted_advancing_team}</strong></p>}
+                            </div>
+                          </details>
+                        )}
                       </div>
                     );
                   })}

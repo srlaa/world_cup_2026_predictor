@@ -1,7 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase, ROUND_LABELS, type MatchRound, type RoundGoal } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { Target, Lock, Check, TrendingUp, Sparkles, ChevronDown } from 'lucide-react';
+import { useDialog } from '../hooks/useDialog';
+import { Target, Lock, Check, TrendingUp, Sparkles, ChevronDown, X } from 'lucide-react';
 
 interface RoundGoalFormProps {
   round: MatchRound;
@@ -32,6 +34,10 @@ export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdat
   useEffect(() => {
     setPredictedGoals(existingPrediction?.predicted_total_goals ?? 20);
   }, [existingPrediction]);
+
+  const roundGoalDialogRef = useDialog(showForm, () => {
+    if (!saving) setShowForm(false);
+  });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -189,16 +195,26 @@ export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdat
     );
   }
 
-  return (
-    <div className="bg-gradient-to-b from-white/[0.07] to-transparent border border-white/10 rounded-2xl p-6 animate-fadeIn">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-          <Sparkles className="w-5 h-5 text-white" />
+  return createPortal((
+    <div
+      className="fixed inset-0 z-[1000] flex items-end justify-center bg-[#03070d]/85 p-0 backdrop-blur-md sm:items-center sm:p-6"
+      onMouseDown={() => !saving && setShowForm(false)}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Round goals prediction for ${ROUND_LABELS[round]}`}
+    >
+      <div ref={roundGoalDialogRef} className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-[#101827] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-6" onMouseDown={(event) => event.stopPropagation()}>
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-bold text-white">Round Goals Challenge</h3>
+            <p className="text-xs text-white/50">{ROUND_LABELS[round]}</p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-bold text-white">Round Goals Challenge</h3>
-          <p className="text-xs text-white/50">{ROUND_LABELS[round]}</p>
-        </div>
+        <button type="button" onClick={() => setShowForm(false)} disabled={saving} className="rounded-xl border border-white/10 p-2.5 text-white/60 hover:bg-white/10 hover:text-white" aria-label="Close round goals editor"><X className="h-5 w-5" /></button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -257,6 +273,7 @@ export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdat
           </button>
         </div>
       </form>
+      </div>
     </div>
-  );
+  ), document.body);
 }
