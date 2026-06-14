@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
 const FOOTBALL_API_BASE = 'https://api.football-data.org/v4';
+const FOOTBALL_API_RETRY_DELAYS_MS = [750, 2_000];
 
 interface ApiMatch {
   id: number;
@@ -59,6 +60,35 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function fetchFootballMatches(footballApiToken: string): Promise<Response> {
+  let lastError: unknown;
+  const url = `${FOOTBALL_API_BASE}/competitions/WC/matches?season=2026`;
+
+  for (let attempt = 0; attempt <= FOOTBALL_API_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await fetch(url, {
+        headers: { 'X-Auth-Token': footballApiToken },
+      });
+    } catch (error) {
+      lastError = error;
+      const delay = FOOTBALL_API_RETRY_DELAYS_MS[attempt];
+      if (delay === undefined) break;
+      console.warn(`Football API connection failed; retrying in ${delay}ms`, error);
+      await sleep(delay);
+    }
+  }
+
+  throw new Error(`Football API connection failed after ${FOOTBALL_API_RETRY_DELAYS_MS.length + 1} attempts: ${errorMessage(lastError)}`);
 }
 
 function isAuthorized(req: Request): boolean {
@@ -149,9 +179,7 @@ Deno.serve(async (req: Request) => {
   const { data: run } = await supabase.from('sync_runs').insert({ job_name: 'update-scores' }).select('id').maybeSingle();
 
   try {
-    const response = await fetch(`${FOOTBALL_API_BASE}/competitions/WC/matches?season=2026`, {
-      headers: { 'X-Auth-Token': footballApiToken },
-    });
+    const response = await fetchFootballMatches(footballApiToken);
     if (!response.ok) {
       const details = await response.text();
       console.error('Football API score update failed', response.status, details);
