@@ -79,22 +79,26 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
   }, [userId]);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[999] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-start sm:p-6 sm:pt-24" onMouseDown={onClose}>
+      <button
+        onClick={onClose}
+        className="fixed right-4 top-4 z-[1000] rounded-2xl border border-white/15 bg-[#101827] p-3 text-white shadow-2xl shadow-black/40 hover:bg-white/10 sm:right-6 sm:top-6"
+        aria-label="Close prediction history"
+      >
+        <X className="h-5 w-5" />
+      </button>
       <div
-        className="h-[92dvh] w-full max-w-4xl overflow-hidden rounded-t-3xl border border-white/10 bg-[#101827] shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-3xl"
+        className="h-[92dvh] w-full max-w-4xl overflow-hidden rounded-t-3xl border border-white/10 bg-[#101827] shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-7rem)] sm:rounded-3xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-[#101827]/95 px-5 py-4 backdrop-blur sm:px-7">
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-[#101827]/95 px-5 py-4 pr-20 backdrop-blur sm:px-7 sm:pr-20">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Prediction history</p>
             <h3 className="mt-1 text-xl font-bold text-white">{displayName}{isCurrentUser ? ' (You)' : ''}</h3>
           </div>
-          <button onClick={onClose} className="shrink-0 rounded-xl border border-white/10 bg-white/[0.03] p-2 text-white/70 hover:bg-white/10 hover:text-white" aria-label="Close">
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
-        <div className="h-[calc(92dvh-82px)] overflow-y-auto p-5 pb-24 sm:h-auto sm:max-h-[calc(92vh-82px)] sm:p-7">
+        <div className="h-[calc(92dvh-82px)] overflow-y-auto p-5 pb-24 sm:h-auto sm:max-h-[calc(100dvh-12rem)] sm:p-7">
           {!isCurrentUser && (
             <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/80">
               <Lock className="h-4 w-4 shrink-0" />
