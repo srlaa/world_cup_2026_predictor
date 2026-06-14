@@ -180,41 +180,55 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
   const awayFlag = getCountryFlag(match.away_team);
   const canEnableBoost = prediction?.boost_used || boostsUsed < boostLimit;
   const outcomePoints = Math.ceil(oddsForOutcome(selectedOutcome) * 10 * roundMultiplier * (boostUsed ? 2 : 1));
+  const predictionState = prediction
+    ? isLocked ? 'Locked pick' : 'Pick saved'
+    : isLocked ? 'Locked' : 'Needs pick';
 
   return (
-    <div className={`group relative bg-gradient-to-b from-white/[0.07] to-white/[0.02] border rounded-2xl p-5 transition-all duration-500 hover:shadow-xl ${
+    <div className={`group relative overflow-hidden rounded-2xl border bg-[#101824]/85 p-5 transition-all duration-500 hover:bg-[#121d2b] hover:shadow-xl ${
       isLive
-        ? 'border-emerald-500/40 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/20'
+        ? 'border-[#12d49a]/45 shadow-lg shadow-[#12d49a]/10 ring-1 ring-[#12d49a]/20'
         : isFinished
           ? 'border-white/10'
-          : 'border-white/10 hover:border-white/20 hover:bg-white/[0.08]'
+          : prediction
+            ? 'border-[#12d49a]/20'
+            : 'border-white/10 hover:border-white/20'
     }`}>
       {isLive && (
-        <div className="absolute -top-px left-4 right-4 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+        <div className="absolute -top-px left-4 right-4 h-px bg-gradient-to-r from-transparent via-[#41f4c2] to-transparent" />
       )}
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 text-white/70 border border-white/10">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-semibold text-white/55">
             {ROUND_LABELS[match.round as MatchRound]}
           </span>
+          <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+            prediction
+              ? 'border-[#12d49a]/20 bg-[#12d49a]/10 text-[#41f4c2]'
+              : isLocked
+                ? 'border-white/10 bg-white/[0.04] text-white/45'
+                : 'border-amber-400/20 bg-amber-400/10 text-amber-300'
+          }`}>
+            {predictionState}
+          </span>
+          {prediction?.boost_used && (
+            <span className="flex items-center gap-1 rounded-full border border-orange-400/25 bg-orange-400/10 px-2.5 py-1 text-xs font-bold text-orange-300">
+              <Flame className="h-3.5 w-3.5 fill-orange-400" />
+              2x
+            </span>
+          )}
           {match.status === 'finished' && prediction && prediction.points_awarded > 0 && (
-            <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+            <span className="flex items-center gap-1 rounded-full border border-[#12d49a]/20 bg-[#12d49a]/10 px-2.5 py-1 text-xs font-semibold text-[#41f4c2]">
               <TrendingUp className="w-3 h-3" />
               +{Math.ceil(Number(prediction.points_awarded))} pts
             </span>
           )}
-          {prediction?.boost_used && (
-            <span className="flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-full bg-gradient-to-r from-orange-500/25 to-red-500/20 text-orange-300 border border-orange-400/30 shadow-sm shadow-orange-500/20">
-              <Flame className="w-3.5 h-3.5 fill-orange-400" />
-              x2
-            </span>
-          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {isLive && (
-            <span className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/40">
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span className="flex items-center gap-2 rounded-full bg-gradient-to-r from-[#12d49a] to-[#0ca678] px-3 py-1.5 text-xs font-bold text-[#061017] shadow-lg shadow-[#12d49a]/30">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#061017]" />
               LIVE
             </span>
           )}
@@ -225,7 +239,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
             </span>
           )}
           {!isLocked && !isLive && !isFinished && (
-            <span className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400/80 border border-amber-500/20">
+            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-white/55">
               <Clock className="w-3 h-3" />
               {formatTimeLeft(match.kickoff_at)}
             </span>
@@ -383,11 +397,10 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
           {!editing && !prediction && (
             <button
               onClick={() => setEditing(true)}
-              className="group/btn relative w-full py-3 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 hover:from-emerald-500/20 hover:to-emerald-600/20 border border-emerald-500/30 rounded-xl text-emerald-400 font-medium transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden"
+              className="group/btn relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-[#12d49a]/30 bg-[#12d49a]/10 py-3 font-semibold text-[#41f4c2] transition-all duration-300 hover:bg-[#12d49a]/15"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-emerald-600 opacity-0 group-hover/btn:opacity-10 transition-opacity" />
               <Target className="w-4 h-4" />
-              Make Prediction
+              Make pick
               <ChevronDown className="w-4 h-4 opacity-50" />
             </button>
           )}
@@ -395,10 +408,10 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
           {!editing && prediction && (
             <button
               onClick={() => setEditing(true)}
-              className="group/btn w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/80 font-medium transition-all duration-300 flex items-center justify-center gap-2"
+              className="group/btn flex w-full items-center justify-center gap-2 rounded-xl border border-[#12d49a]/20 bg-[#12d49a]/10 py-3 font-semibold text-[#41f4c2] transition-all duration-300 hover:bg-[#12d49a]/15"
             >
-              <Check className="w-4 h-4 text-emerald-400" />
-              Prediction Made
+              <Check className="w-4 h-4" />
+              Edit pick
               <ChevronUp className="w-4 h-4 opacity-50" />
             </button>
           )}
@@ -427,12 +440,12 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                       }}
                       className={`relative py-3 px-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
                         selectedOutcome === outcome
-                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/40'
+                          ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/30'
                           : 'bg-white/5 text-white/60 hover:bg-white/10 border border-white/10'
                       }`}
                     >
                       {selectedOutcome === outcome && (
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 blur-xl opacity-50 -z-10" />
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#12d49a] to-[#41f4c2] blur-xl opacity-30 -z-10" />
                       )}
                       <div className="text-lg font-bold">{outcome}</div>
                       <div className="text-xs opacity-80">
@@ -497,7 +510,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                         setSelectedOutcome(outcome);
                         if (requiresAdvancer(match.round) && outcome !== 'X') setAdvancingTeam(outcome === '1' ? match.home_team : match.away_team);
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#12d49a]/50 focus:border-[#12d49a]/50 transition-all"
                     />
                     <p className="text-[10px] text-white/40 mt-1.5 truncate">{match.home_team}</p>
                   </div>
@@ -516,7 +529,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                         setSelectedOutcome(outcome);
                         if (requiresAdvancer(match.round) && outcome !== 'X') setAdvancingTeam(outcome === '1' ? match.home_team : match.away_team);
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-center text-2xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#12d49a]/50 focus:border-[#12d49a]/50 transition-all"
                     />
                     <p className="text-[10px] text-white/40 mt-1.5 truncate">{match.away_team}</p>
                   </div>
@@ -595,7 +608,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                 <button
                   type="submit"
                   disabled={saving}
-                  className="relative flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 rounded-xl text-white font-semibold transition-all duration-300 disabled:opacity-50 shadow-lg shadow-emerald-500/30"
+                  className="relative flex-1 rounded-xl bg-gradient-to-r from-[#12d49a] to-[#0ca678] py-3 font-semibold text-[#061017] shadow-lg shadow-[#12d49a]/25 transition-all duration-300 hover:from-[#41f4c2] hover:to-[#12d49a] disabled:opacity-50"
                 >
                   {saving ? (
                     <span className="flex items-center justify-center gap-2">

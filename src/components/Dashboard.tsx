@@ -492,12 +492,27 @@ export function Dashboard() {
             )}
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="relative w-16 h-16">
-                  <div className="absolute inset-0 border-4 border-emerald-500/20 rounded-full" />
-                  <div className="absolute inset-0 border-4 border-emerald-500/80 rounded-full border-t-transparent animate-spin" />
-                </div>
-                <p className="mt-4 text-white/60 text-sm animate-pulse">Loading matches...</p>
+              <div className="grid gap-5 lg:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+                    <div className="mb-5 flex items-center justify-between">
+                      <div className="h-6 w-24 rounded-full bg-white/10 animate-pulse" />
+                      <div className="h-6 w-16 rounded-full bg-white/10 animate-pulse" />
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 space-y-3 text-center">
+                        <div className="mx-auto h-12 w-12 rounded-full bg-white/10 animate-pulse" />
+                        <div className="mx-auto h-4 w-24 rounded bg-white/10 animate-pulse" />
+                      </div>
+                      <div className="h-8 w-12 rounded bg-white/10 animate-pulse" />
+                      <div className="flex-1 space-y-3 text-center">
+                        <div className="mx-auto h-12 w-12 rounded-full bg-white/10 animate-pulse" />
+                        <div className="mx-auto h-4 w-24 rounded bg-white/10 animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="mt-5 h-11 rounded-xl bg-white/10 animate-pulse" />
+                  </div>
+                ))}
               </div>
             ) : matches.length === 0 ? (
               <div className="text-center py-20 animate-fadeIn">

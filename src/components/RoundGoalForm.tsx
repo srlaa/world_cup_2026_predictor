@@ -72,7 +72,7 @@ export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdat
 
   if (isLocked && !existingPrediction) {
     return (
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
         <div className="flex items-center justify-center gap-2 text-white/40">
           <Lock className="w-4 h-4" />
           <span className="text-sm">Round goals prediction locked - round has started</span>
@@ -141,14 +141,14 @@ export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdat
 
   if (!showForm && existingPrediction && !isLocked) {
     return (
-      <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 rounded-2xl p-5">
+      <div className="rounded-2xl border border-[#12d49a]/20 bg-[#12d49a]/10 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center">
-              <Target className="w-5 h-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#41f4c2] to-[#12b886]">
+              <Target className="h-4 w-4 text-[#061017]" />
             </div>
             <div>
-              <p className="text-xs text-white/50 mb-0.5">Round Goals Prediction</p>
+              <p className="mb-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#41f4c2]/70">Round goals</p>
               <p className="text-white font-semibold">
                 {existingPrediction.predicted_total_goals} goals
               </p>
@@ -156,7 +156,7 @@ export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdat
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="flex items-center gap-1.5 rounded-full border border-[#12d49a]/20 bg-[#12d49a]/10 px-3 py-1 text-sm font-semibold text-[#41f4c2] transition-colors hover:bg-[#12d49a]/15"
           >
             Edit
             <ChevronDown className="w-4 h-4" />
@@ -170,16 +170,16 @@ export function RoundGoalForm({ round, roundStartAt, existingPrediction, onUpdat
     return (
       <button
         onClick={() => setShowForm(true)}
-        className="group relative w-full bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent hover:from-amber-500/20 hover:via-yellow-500/10 border border-amber-500/20 rounded-2xl p-5 text-left transition-all overflow-hidden"
+        className="group relative w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-left transition-all hover:bg-amber-500/15"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-amber-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 shadow-lg shadow-amber-500/20">
+              <Sparkles className="h-4 w-4 text-[#211400]" />
             </div>
             <div>
-              <p className="text-amber-400 font-semibold mb-0.5">Round Goals Challenge</p>
+              <p className="mb-0.5 font-semibold text-amber-300">Round Goals Challenge</p>
               <p className="text-xs text-white/50">Predict total goals scored in this round</p>
             </div>
           </div>
