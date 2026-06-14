@@ -22,6 +22,34 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+.app-shell {
+  padding-bottom: 7rem;
+}
+
+.desktop-nav,
+.desktop-account {
+  display: none;
+}
+
+.mobile-nav {
+  display: block;
+}
+
+@media (min-width: 640px) and (hover: hover) and (pointer: fine) {
+  .app-shell {
+    padding-bottom: 0;
+  }
+
+  .desktop-nav,
+  .desktop-account {
+    display: flex;
+  }
+
+  .mobile-nav {
+    display: none;
+  }
+}
+
 .brand-wordmark {
   font-family: 'Arial Black', 'Avenir Next Condensed', 'Segoe UI Black', 'Segoe UI', sans-serif;
   font-weight: 900;

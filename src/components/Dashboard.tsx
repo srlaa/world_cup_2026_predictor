@@ -6,7 +6,7 @@ import { RoundGoalForm } from './RoundGoalForm';
 import { PlayerPredictionHistory } from './PlayerPredictionHistory';
 import { LeaguePanel } from './LeaguePanel';
 import { RoundSummary } from './RoundSummary';
-import { RulesModal } from './RulesModal';
+import { RulesPage } from './RulesModal';
 import { SystemHealth } from './SystemHealth';
 import { MundictoBrand } from './MundictoBrand';
 import { getCountryFlag } from '../lib/countries';
@@ -75,10 +75,9 @@ export function Dashboard() {
   const [predictions, setPredictions] = useState<Record<string, Prediction>>({});
   const [roundGoalPrediction, setRoundGoalPrediction] = useState<RoundGoal | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'matches' | 'leaderboard' | 'leagues' | 'health'>(() =>
+  const [activeView, setActiveView] = useState<'matches' | 'leaderboard' | 'leagues' | 'health' | 'rules'>(() =>
     new URLSearchParams(window.location.search).has('league') ? 'leagues' : 'matches'
   );
-  const [showRules, setShowRules] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ totalPredictions: 0, liveMatches: 0, upcomingMatches: 0 });
@@ -243,7 +242,7 @@ export function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0a0f1a] pb-28 sm:pb-0">
+    <div className="app-shell min-h-screen overflow-x-hidden bg-[#0a0f1a]">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#12d49a]/10 rounded-full blur-3xl" />
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-[#12d49a]/5 rounded-full blur-3xl" />
@@ -255,10 +254,10 @@ export function Dashboard() {
           <div className="flex min-w-0 items-center justify-between gap-3">
             <MundictoBrand compact />
 
-            <div className="hidden min-w-0 flex-1 justify-center px-4 sm:flex">
+            <div className="desktop-nav min-w-0 flex-1 justify-center px-4">
               <div className="inline-flex items-center gap-1 rounded-xl border border-white/5 bg-[#111a27] p-1">
                 <button
-                  onClick={() => { setShowRules(false); setActiveView('matches'); }}
+                  onClick={() => setActiveView('matches')}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
                     activeView === 'matches'
                       ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20'
@@ -269,17 +268,17 @@ export function Dashboard() {
                   <span>Matches</span>
                 </button>
                 <button
-                  onClick={() => { setShowRules(false); setActiveView('leagues'); }}
+                  onClick={() => setActiveView('leagues')}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
                   title="Private leagues"
                 >
                   <Users className="h-4 w-4" />
                   <span>Leagues</span>
                 </button>
-                {profile?.is_admin && <button onClick={() => { setShowRules(false); setActiveView('health'); }} className={`hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all lg:flex ${activeView === 'health' && !showRules ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
-                <button onClick={() => setShowRules(true)} className={`flex items-center justify-center rounded-lg px-3 py-1.5 transition-all ${showRules ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="Game rules"><BookOpen className="h-4 w-4" /></button>
+                {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
+                <button onClick={() => setActiveView('rules')} className={`flex items-center justify-center rounded-lg px-3 py-1.5 transition-all ${activeView === 'rules' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="Game rules"><BookOpen className="h-4 w-4" /></button>
                 <button
-                  onClick={() => { setShowRules(false); setActiveView('leaderboard'); }}
+                  onClick={() => setActiveView('leaderboard')}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
                     activeView === 'leaderboard'
                       ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20'
@@ -293,7 +292,7 @@ export function Dashboard() {
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              <div className="hidden items-center gap-3 rounded-xl border border-white/10 bg-gradient-to-r from-[#1a2332] to-[#141d2b] p-1.5 sm:flex sm:px-4 sm:py-2">
+              <div className="desktop-account items-center gap-3 rounded-xl border border-white/10 bg-gradient-to-r from-[#1a2332] to-[#141d2b] p-1.5 sm:px-4 sm:py-2">
                 <div className="relative">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#41f4c2] to-[#12b886] text-sm font-bold text-[#061017] shadow-lg shadow-[#12d49a]/25 ring-2 ring-[#41f4c2]/20">
                     {profile?.display_name?.[0]?.toUpperCase() || 'U'}
@@ -318,12 +317,12 @@ export function Dashboard() {
         </div>
       </header>
 
-      <nav className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[70] rounded-[1.35rem] border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:hidden">
+      <nav className="mobile-nav fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[70] rounded-[1.35rem] border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl">
         <div className="grid items-center gap-1" style={{ gridTemplateColumns: profile?.is_admin ? 'repeat(5, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' }}>
           <button
-            onClick={() => { setShowRules(false); setActiveView('matches'); }}
+            onClick={() => setActiveView('matches')}
             className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${
-              activeView === 'matches' && !showRules
+              activeView === 'matches'
                 ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
                 : 'text-white/55 hover:bg-white/5 hover:text-white'
             }`}
@@ -332,29 +331,29 @@ export function Dashboard() {
             <span>Matches</span>
           </button>
           <button
-            onClick={() => { setShowRules(false); setActiveView('leagues'); }}
-            className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'leagues' && !showRules ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
+            onClick={() => setActiveView('leagues')}
+            className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
           >
             <Users className="h-5 w-5" />
             <span>Leagues</span>
           </button>
           {profile?.is_admin && (
             <button
-              onClick={() => { setShowRules(false); setActiveView('health'); }}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'health' && !showRules ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
+              onClick={() => setActiveView('health')}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'health' ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
             >
               <ShieldCheck className="h-5 w-5" />
               <span>Admin</span>
             </button>
           )}
-          <button onClick={() => setShowRules(true)} className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${showRules ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => setActiveView('rules')} className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'rules' ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}>
             <BookOpen className="h-5 w-5" />
             <span>Rules</span>
           </button>
           <button
-            onClick={() => { setShowRules(false); setActiveView('leaderboard'); }}
+            onClick={() => setActiveView('leaderboard')}
             className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${
-              activeView === 'leaderboard' && !showRules
+              activeView === 'leaderboard'
                 ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
                 : 'text-white/55 hover:bg-white/5 hover:text-white'
             }`}
@@ -382,25 +381,28 @@ export function Dashboard() {
                 </div>
                 <div className="relative mt-3 grid flex-1 grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.045] to-[#061017]/30">
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-red-400/40 via-[#41f4c2]/35 to-amber-300/40" />
-                  <div className="flex min-w-0 flex-col justify-center px-4 py-3">
+                  <div className="flex min-w-0 flex-col justify-center px-2.5 py-3 min-[400px]:px-4">
                     <p className="text-2xl font-black leading-none text-white">{stats.liveMatches}</p>
-                    <div className="mt-2 flex items-center gap-1.5">
+                    <div className="mt-2 flex items-center gap-1 min-[400px]:gap-1.5">
                       <span className={`h-1.5 w-1.5 rounded-full bg-red-400 ${stats.liveMatches ? 'animate-pulse' : 'opacity-45'}`} />
-                      <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-white/40">Live now</p>
+                      <p className="whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.08em] text-white/40 min-[400px]:text-[10px] min-[400px]:tracking-[0.13em]">Live now</p>
                     </div>
                   </div>
-                  <div className="flex min-w-0 flex-col justify-center border-x border-white/10 px-4 py-3">
+                  <div className="flex min-w-0 flex-col justify-center border-x border-white/10 px-2.5 py-3 min-[400px]:px-4">
                     <p className="text-2xl font-black leading-none text-white">{stats.upcomingMatches}</p>
-                    <div className="mt-2 flex items-center gap-1.5">
+                    <div className="mt-2 flex items-center gap-1 min-[400px]:gap-1.5">
                       <Calendar className="h-3 w-3 shrink-0 text-[#41f4c2]/70" />
-                      <p className="truncate text-[10px] font-bold uppercase tracking-[0.13em] text-white/40">Upcoming</p>
+                      <p className="whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.08em] text-white/40 min-[400px]:text-[10px] min-[400px]:tracking-[0.13em]">
+                        <span className="min-[360px]:hidden">Next</span>
+                        <span className="hidden min-[360px]:inline">Upcoming</span>
+                      </p>
                     </div>
                   </div>
-                  <div className="flex min-w-0 flex-col justify-center px-4 py-3">
+                  <div className="flex min-w-0 flex-col justify-center px-2.5 py-3 min-[400px]:px-4">
                     <p className="text-2xl font-black leading-none text-white">{stats.totalPredictions}</p>
-                    <div className="mt-2 flex items-center gap-1.5">
+                    <div className="mt-2 flex items-center gap-1 min-[400px]:gap-1.5">
                       <Target className="h-3 w-3 shrink-0 text-amber-300/70" />
-                      <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-white/40">Your picks</p>
+                      <p className="whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.08em] text-white/40 min-[400px]:text-[10px] min-[400px]:tracking-[0.13em]">Your picks</p>
                     </div>
                   </div>
                 </div>
@@ -617,8 +619,8 @@ export function Dashboard() {
         {activeView === 'leaderboard' && <Leaderboard />}
         {activeView === 'leagues' && <LeaguePanel />}
         {activeView === 'health' && profile?.is_admin && <SystemHealth />}
+        {activeView === 'rules' && <RulesPage />}
       </main>
-      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>
   );
 }

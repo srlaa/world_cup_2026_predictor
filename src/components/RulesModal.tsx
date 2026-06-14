@@ -1,6 +1,4 @@
-import { createPortal } from 'react-dom';
-import { Calculator, Clock, Eye, Flame, ShieldCheck, Target, Trophy, X, Zap } from 'lucide-react';
-import { useDialog } from '../hooks/useDialog';
+import { Calculator, Clock, Eye, Flame, ShieldCheck, Target, Trophy, Zap } from 'lucide-react';
 
 const ruleSections = [
   {
@@ -55,22 +53,19 @@ const accentClasses: Record<string, string> = {
   violet: 'border-violet-400/15 bg-violet-400/10 text-violet-300',
 };
 
-export function RulesModal({ onClose }: { onClose: () => void }) {
-  const dialogRef = useDialog(true, onClose);
-
-  return createPortal(
-    <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] top-0 z-[60] flex items-end justify-center bg-[#03070d]/85 p-3 backdrop-blur-md sm:inset-0 sm:z-[1000] sm:items-center sm:p-6" onMouseDown={onClose} role="dialog" aria-modal="true" aria-label="Game rules">
-      <div ref={dialogRef} className="max-h-full w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/10 bg-[#101827] shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:max-h-[90dvh]" onMouseDown={(event) => event.stopPropagation()}>
-        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-[#101827]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
+export function RulesPage() {
+  return (
+    <section className="mx-auto w-full max-w-5xl animate-fadeIn">
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#101827] shadow-xl shadow-black/15">
+        <header className="border-b border-white/10 bg-gradient-to-r from-[#12d49a]/10 to-transparent px-5 py-5 sm:px-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#41f4c2]/70">Mundicto playbook</p>
             <h2 className="mt-1 text-2xl font-black text-white">How scoring works</h2>
             <p className="mt-1 text-sm text-white/45">The essentials first, then every way to earn points.</p>
           </div>
-          <button onClick={onClose} className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-white/60 hover:bg-white/10 hover:text-white" aria-label="Close game rules"><X className="h-5 w-5" /></button>
         </header>
 
-        <div className="p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
+        <div className="p-5 sm:p-7">
           <section className="grid gap-2 sm:grid-cols-3">
             <QuickRule icon={<Clock />} title="Locks at kickoff" text="Saved picks can be edited until the match starts." />
             <QuickRule icon={<Eye />} title="Picks stay private" text="Other players see a pick only after that match begins." />
@@ -92,8 +87,7 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </section>
   );
 }
 
