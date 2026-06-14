@@ -8,7 +8,7 @@ import { LeaguePanel } from './LeaguePanel';
 import { RoundSummary } from './RoundSummary';
 import { RulesModal } from './RulesModal';
 import { SystemHealth } from './SystemHealth';
-import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users, BookOpen, ShieldCheck, WifiOff, Bell } from 'lucide-react';
+import { Trophy, Target, LogOut, Flame, Zap, Crown, Activity, Calendar, TrendingUp, Users, BookOpen, ShieldCheck, WifiOff } from 'lucide-react';
 
 const ROUNDS: MatchRound[] = [
   'group_round_1',
@@ -437,7 +437,7 @@ export function Dashboard() {
             </div>
 
             <div className="mb-6">
-              <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide [-webkit-mask-image:linear-gradient(90deg,black,black,transparent)] [mask-image:linear-gradient(90deg,black,calc(100%-20px),transparent)]">
+              <div className="grid auto-cols-[minmax(4.25rem,1fr)] grid-flow-col gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.035] p-1 scrollbar-hide md:grid-flow-row md:grid-cols-9 md:overflow-visible">
                 {ROUNDS.map((round) => {
                   const roundMatches = matches.filter(m => m.round === round);
                   const isActive = activeTab === round;
@@ -449,14 +449,14 @@ export function Dashboard() {
                       onClick={() => setActiveTab(round)}
                       title={ROUND_LABELS[round]}
                       aria-label={`Show ${ROUND_LABELS[round]}`}
-                      className={`group relative flex min-w-[4.25rem] flex-shrink-0 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-300 ${
+                      className={`group relative flex min-w-[4.25rem] items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 md:min-w-0 ${
                         isActive
-                          ? 'scale-105 bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-xl shadow-[#12d49a]/25'
-                          : 'border border-white/5 bg-white/[0.04] text-white/60 hover:bg-white/10 hover:text-white'
+                          ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20'
+                          : 'text-white/55 hover:bg-white/[0.06] hover:text-white'
                       }`}
                     >
                       {isActive && (
-                        <div className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-[#12d49a] to-[#41f4c2] opacity-40 blur-xl" />
+                        <div className="absolute inset-x-3 -bottom-1 h-px rounded-full bg-[#41f4c2]/70" />
                       )}
                       <div className="flex items-center gap-1.5">
                         <span>{ROUND_SHORT_LABELS[round]}</span>
@@ -480,22 +480,6 @@ export function Dashboard() {
                   existingPrediction={roundGoalPrediction || undefined}
                   onUpdate={fetchData}
                 />
-              </div>
-            )}
-
-            {unpredicted.length > 0 && (
-              <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/80 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <Bell className="h-5 w-5 shrink-0 text-amber-300" />
-                  <span><strong>{unpredicted.length}</strong> {unpredicted.length === 1 ? 'match needs' : 'matches need'} your prediction.</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={reviewMissingPicks}
-                  className="inline-flex items-center justify-center rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100 hover:bg-amber-400/15"
-                >
-                  Review missing picks
-                </button>
               </div>
             )}
 
