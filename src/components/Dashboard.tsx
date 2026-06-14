@@ -492,7 +492,7 @@ export function Dashboard() {
             )}
 
             {loading ? (
-              <div className="grid gap-5 lg:grid-cols-2">
+              <div className="grid gap-5 2xl:grid-cols-2">
                 {Array.from({ length: 4 }).map((_, index) => (
                   <div key={index} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
                     <div className="mb-5 flex items-center justify-between">
@@ -522,7 +522,7 @@ export function Dashboard() {
                 <p className="text-white/40 text-lg">No matches scheduled for this round</p>
               </div>
             ) : (
-              <div className="grid gap-5 lg:grid-cols-2 animate-fadeIn">
+              <div className="grid gap-5 animate-fadeIn 2xl:grid-cols-2">
                 {matches.map((match, index) => (
                   <div
                     key={match.id}
