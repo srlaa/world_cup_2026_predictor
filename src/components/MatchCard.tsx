@@ -12,7 +12,7 @@ interface MatchCardProps {
   boostLimit: number;
   boostsUsed: number;
   roundMultiplier: number;
-  onUpdate: () => void;
+  onUpdate: (showLoading?: boolean) => void | Promise<void>;
 }
 
 function isMatchLocked(kickoffAt: string): boolean {
@@ -65,6 +65,31 @@ function formatTimeLeft(kickoffAt: string): string {
 
 function requiresAdvancer(round: MatchRound): boolean {
   return ['round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'final'].includes(round);
+}
+
+function getOddsSource(match: Match): { label: string; details: string } {
+  const bookmakerMatch = match.odds_source.match(/^the_odds_api_median_(\d+)$/);
+  const updatedAt = match.odds_updated_at
+    ? new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(match.odds_updated_at))
+    : null;
+
+  if (bookmakerMatch) {
+    const bookmakerCount = Number(bookmakerMatch[1]);
+    return {
+      label: `Market odds · ${bookmakerCount} ${bookmakerCount === 1 ? 'book' : 'books'}`,
+      details: `Median market odds from The Odds API${updatedAt ? `, updated ${updatedAt}` : ''}`,
+    };
+  }
+
+  return {
+    label: 'Mundicto model',
+    details: `Estimated odds from the Mundicto rating model${updatedAt ? `, updated ${updatedAt}` : ''}`,
+  };
 }
 
 export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMultiplier, onUpdate }: MatchCardProps) {
@@ -146,8 +171,14 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
         if (error) throw error;
       }
 
+      const scrollPosition = window.scrollY;
       setEditing(false);
-      onUpdate();
+      await onUpdate(false);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: scrollPosition, behavior: 'auto' });
+        });
+      });
     } catch (saveError) {
       console.error('Error saving prediction:', saveError);
       setError(saveError instanceof Error ? saveError.message : 'Could not save prediction');
@@ -189,6 +220,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
   const predictionState = prediction
     ? isLocked ? 'Locked pick' : 'Pick saved'
     : isLocked ? 'Locked' : 'Needs pick';
+  const oddsSource = getOddsSource(match);
 
   return (
     <div className={`group relative overflow-hidden rounded-2xl border bg-[#101824]/85 p-5 transition-all duration-500 hover:bg-[#121d2b] hover:shadow-xl ${
@@ -314,7 +346,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4 text-xs text-white/40 mb-4">
+      <div className="mb-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-white/40">
         <div className="flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5" />
           {formatKickoff(match.kickoff_at)}
@@ -328,6 +360,11 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
             </div>
           </>
         )}
+        <span className="h-1 w-1 rounded-full bg-white/20" />
+        <div className="flex items-center gap-1.5" title={oddsSource.details}>
+          <TrendingUp className="h-3.5 w-3.5" />
+          {oddsSource.label}
+        </div>
       </div>
 
       {error && (
@@ -499,9 +536,15 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
                       <div className="text-xs opacity-80">
                         {outcome === '1' ? 'Home' : outcome === 'X' ? 'Draw' : 'Away'}
                       </div>
+                      <div className="mt-1 text-[11px] font-bold opacity-70">
+                        {oddsForOutcome(outcome).toFixed(2)}
+                      </div>
                     </button>
                   ))}
                 </div>
+                <p className="mt-2 text-center text-[11px] text-white/35" title={oddsSource.details}>
+                  {oddsSource.label}
+                </p>
               </div>
 
               {boostLimit > 0 && (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Clock, Flame, Lock, Target, X, Zap } from 'lucide-react';
 import { ROUND_LABELS, supabase, type MatchRound, type MatchStatus } from '../lib/supabase';
 import { getCountryFlag } from '../lib/countries';
@@ -81,14 +82,14 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
 
   const dialogRef = useDialog(true, onClose);
 
-  return (
-    <div className="fixed inset-0 z-[999] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-start sm:p-6 sm:pt-24" onMouseDown={onClose} role="dialog" aria-modal="true" aria-label={`Prediction history for ${displayName}`}>
+  return createPortal((
+    <div className="fixed inset-0 z-[1000] flex items-stretch justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-start sm:p-6 sm:pt-24" onMouseDown={onClose} role="dialog" aria-modal="true" aria-label={`Prediction history for ${displayName}`}>
       <div
         ref={dialogRef}
-        className="h-[92dvh] w-full max-w-4xl overflow-hidden rounded-t-3xl border border-white/10 bg-[#101827] shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-7rem)] sm:rounded-3xl"
+        className="flex h-[100dvh] min-h-0 w-full max-w-4xl flex-col overflow-hidden bg-[#101827] shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-7rem)] sm:rounded-3xl sm:border sm:border-white/10"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-white/10 bg-[#101827]/95 px-5 py-4 backdrop-blur sm:px-7">
+        <div className="z-30 flex shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-[#101827]/95 px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] backdrop-blur sm:px-7 sm:py-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Prediction history</p>
             <h3 className="mt-1 truncate text-xl font-bold text-white">{displayName}{isCurrentUser ? ' (You)' : ''}</h3>
@@ -102,7 +103,7 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
           </button>
         </div>
 
-        <div className="h-[calc(92dvh-82px)] overflow-y-auto p-5 pb-24 sm:h-auto sm:max-h-[calc(100dvh-12rem)] sm:p-7">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:max-h-[calc(100dvh-12rem)] sm:p-7">
           {!isCurrentUser && (
             <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/80">
               <Lock className="h-4 w-4 shrink-0" />
@@ -229,5 +230,5 @@ export function PlayerPredictionHistory({ userId, displayName, isCurrentUser, on
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

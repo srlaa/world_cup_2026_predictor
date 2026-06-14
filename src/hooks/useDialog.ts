@@ -15,7 +15,7 @@ export function useDialog(open: boolean, onClose: () => void) {
     const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
 
     document.body.style.overflow = 'hidden';
-    window.requestAnimationFrame(() => focusable()[0]?.focus());
+    window.requestAnimationFrame(() => focusable()[0]?.focus({ preventScroll: true }));
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -40,7 +40,7 @@ export function useDialog(open: boolean, onClose: () => void) {
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
-      previouslyFocused?.focus();
+      previouslyFocused?.focus({ preventScroll: true });
     };
   }, [open]);
 
