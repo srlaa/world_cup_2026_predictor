@@ -59,8 +59,8 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
   const dialogRef = useDialog(true, onClose);
 
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-[#03070d]/85 p-0 backdrop-blur-md sm:items-center sm:p-6" onMouseDown={onClose} role="dialog" aria-modal="true" aria-label="Game rules">
-      <div ref={dialogRef} className="max-h-[94dvh] w-full max-w-4xl overflow-y-auto rounded-t-3xl border border-white/10 bg-[#101827] shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:max-h-[90dvh] sm:rounded-3xl" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] top-0 z-[60] flex items-end justify-center bg-[#03070d]/85 p-3 backdrop-blur-md sm:inset-0 sm:z-[1000] sm:items-center sm:p-6" onMouseDown={onClose} role="dialog" aria-modal="true" aria-label="Game rules">
+      <div ref={dialogRef} className="max-h-full w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/10 bg-[#101827] shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:max-h-[90dvh]" onMouseDown={(event) => event.stopPropagation()}>
         <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-[#101827]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#41f4c2]/70">Mundicto playbook</p>

@@ -258,7 +258,7 @@ export function Dashboard() {
             <div className="hidden min-w-0 flex-1 justify-center px-4 sm:flex">
               <div className="inline-flex items-center gap-1 rounded-xl border border-white/5 bg-[#111a27] p-1">
                 <button
-                  onClick={() => setActiveView('matches')}
+                  onClick={() => { setShowRules(false); setActiveView('matches'); }}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
                     activeView === 'matches'
                       ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20'
@@ -269,17 +269,17 @@ export function Dashboard() {
                   <span>Matches</span>
                 </button>
                 <button
-                  onClick={() => setActiveView('leagues')}
+                  onClick={() => { setShowRules(false); setActiveView('leagues'); }}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
                   title="Private leagues"
                 >
                   <Users className="h-4 w-4" />
                   <span>Leagues</span>
                 </button>
-                {profile?.is_admin && <button onClick={() => setActiveView('health')} className={`hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all lg:flex ${activeView === 'health' ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
-                <button onClick={() => setShowRules(true)} className="flex items-center justify-center rounded-lg px-3 py-1.5 text-white/60 hover:bg-white/5 hover:text-white" title="Game rules"><BookOpen className="h-4 w-4" /></button>
+                {profile?.is_admin && <button onClick={() => { setShowRules(false); setActiveView('health'); }} className={`hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all lg:flex ${activeView === 'health' && !showRules ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="System health"><ShieldCheck className="h-4 w-4" /></button>}
+                <button onClick={() => setShowRules(true)} className={`flex items-center justify-center rounded-lg px-3 py-1.5 transition-all ${showRules ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017]' : 'text-white/60 hover:bg-white/5 hover:text-white'}`} title="Game rules"><BookOpen className="h-4 w-4" /></button>
                 <button
-                  onClick={() => setActiveView('leaderboard')}
+                  onClick={() => { setShowRules(false); setActiveView('leaderboard'); }}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
                     activeView === 'leaderboard'
                       ? 'bg-gradient-to-r from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/20'
@@ -321,9 +321,9 @@ export function Dashboard() {
       <nav className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[70] rounded-[1.35rem] border border-white/10 bg-[#141d2b]/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:hidden">
         <div className="grid items-center gap-1" style={{ gridTemplateColumns: profile?.is_admin ? 'repeat(5, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' }}>
           <button
-            onClick={() => setActiveView('matches')}
+            onClick={() => { setShowRules(false); setActiveView('matches'); }}
             className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${
-              activeView === 'matches'
+              activeView === 'matches' && !showRules
                 ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
                 : 'text-white/55 hover:bg-white/5 hover:text-white'
             }`}
@@ -332,29 +332,29 @@ export function Dashboard() {
             <span>Matches</span>
           </button>
           <button
-            onClick={() => setActiveView('leagues')}
-            className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'leagues' ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
+            onClick={() => { setShowRules(false); setActiveView('leagues'); }}
+            className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'leagues' && !showRules ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
           >
             <Users className="h-5 w-5" />
             <span>Leagues</span>
           </button>
           {profile?.is_admin && (
             <button
-              onClick={() => setActiveView('health')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'health' ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
+              onClick={() => { setShowRules(false); setActiveView('health'); }}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${activeView === 'health' && !showRules ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}
             >
               <ShieldCheck className="h-5 w-5" />
               <span>Admin</span>
             </button>
           )}
-          <button onClick={() => setShowRules(true)} className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold text-white/55 transition-all duration-300 hover:bg-white/5 hover:text-white">
+          <button onClick={() => setShowRules(true)} className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${showRules ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}>
             <BookOpen className="h-5 w-5" />
             <span>Rules</span>
           </button>
           <button
-            onClick={() => setActiveView('leaderboard')}
+            onClick={() => { setShowRules(false); setActiveView('leaderboard'); }}
             className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-bold transition-all duration-300 ${
-              activeView === 'leaderboard'
+              activeView === 'leaderboard' && !showRules
                 ? 'bg-gradient-to-b from-[#12d49a] to-[#0ca678] text-[#061017] shadow-lg shadow-[#12d49a]/25'
                 : 'text-white/55 hover:bg-white/5 hover:text-white'
             }`}
