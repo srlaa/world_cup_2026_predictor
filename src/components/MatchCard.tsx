@@ -68,14 +68,16 @@ function requiresAdvancer(round: MatchRound): boolean {
 }
 
 function getOddsSource(match: Match): { label: string; details: string } {
-  const bookmakerMatch = match.odds_source.match(/^the_odds_api_median_(\d+)$/);
-  const updatedAt = match.odds_updated_at
+  const source = match.locked_odds_source ?? match.odds_source;
+  const bookmakerMatch = source.match(/^the_odds_api_median_(\d+)$/);
+  const sourceTimestamp = match.odds_locked_at ?? match.odds_updated_at;
+  const updatedAt = sourceTimestamp
     ? new Intl.DateTimeFormat('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      }).format(new Date(match.odds_updated_at))
+      }).format(new Date(sourceTimestamp))
     : null;
 
   if (bookmakerMatch) {
@@ -86,9 +88,16 @@ function getOddsSource(match: Match): { label: string; details: string } {
     };
   }
 
+  if (!match.odds_locked_at && match.status === 'scheduled') {
+    return {
+      label: 'Market odds pending',
+      details: 'The first available market odds will be locked permanently for this match',
+    };
+  }
+
   return {
-    label: 'Mundicto model',
-    details: `Estimated odds from the Mundicto rating model${updatedAt ? `, updated ${updatedAt}` : ''}`,
+    label: 'Legacy model odds',
+    details: `This earlier match was scored before market-odds locking was enabled${updatedAt ? `, odds set ${updatedAt}` : ''}`,
   };
 }
 
@@ -205,18 +214,26 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
 
   const oddsForOutcome = (outcome: '1' | 'X' | '2') => {
     switch (outcome) {
-      case '1': return match.odds_home;
-      case 'X': return match.odds_draw;
-      case '2': return match.odds_away;
+      case '1': return match.locked_odds_home ?? match.odds_home;
+      case 'X': return match.locked_odds_draw ?? match.odds_draw;
+      case '2': return match.locked_odds_away ?? match.odds_away;
     }
   };
 
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
+  const hasLockedMarketOdds = Boolean(
+    match.odds_locked_at
+      && match.locked_odds_source?.startsWith('the_odds_api_')
+      && match.locked_odds_home
+      && match.locked_odds_draw
+      && match.locked_odds_away,
+  );
   const homeFlag = getCountryFlag(match.home_team);
   const awayFlag = getCountryFlag(match.away_team);
   const canEnableBoost = prediction?.boost_used || boostsUsed < boostLimit;
-  const outcomePoints = Math.ceil(oddsForOutcome(selectedOutcome) * 10 * roundMultiplier * (boostUsed ? 2 : 1));
+  const baseOutcomePoints = Math.ceil(oddsForOutcome(selectedOutcome) * 10 * roundMultiplier);
+  const outcomePoints = baseOutcomePoints * (boostUsed ? 2 : 1);
   const predictionState = prediction
     ? isLocked ? 'Locked pick' : 'Pick saved'
     : isLocked ? 'Locked' : 'Needs pick';
@@ -456,7 +473,7 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
         </div>
       )}
 
-      {!isLocked && !isLive && !isFinished && (
+      {!isLocked && !isLive && !isFinished && hasLockedMarketOdds && (
         <>
           {!editing && !prediction && (
             <button
@@ -719,6 +736,13 @@ export function MatchCard({ match, prediction, boostLimit, boostsUsed, roundMult
             </div>
           ), document.body)}
         </>
+      )}
+
+      {!isLocked && !isLive && !isFinished && !hasLockedMarketOdds && (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-blue-400/20 bg-blue-400/10 px-4 py-3 text-sm font-semibold text-blue-200/80">
+          <Clock className="h-4 w-4" />
+          Market odds pending
+        </div>
       )}
     </div>
   );

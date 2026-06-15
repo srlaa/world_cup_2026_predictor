@@ -51,6 +51,7 @@ const TEAM_ALIASES: Record<string, string> = {
   drcongo: 'congodr',
   capeverde: 'capeverdeislands',
   turkiye: 'turkey',
+  czechrepublic: 'czechia',
 };
 
 function normalizeTeam(name: string): string {
@@ -128,6 +129,22 @@ Deno.serve(async (req: Request) => {
   const { data: run } = await supabase.from('sync_runs').insert({ job_name: 'sync-odds' }).select('id').maybeSingle();
 
   try {
+    const now = new Date().toISOString();
+    const { data, error: matchesError } = await supabase
+      .from('matches')
+      .select('id, home_team, away_team, kickoff_at')
+      .eq('status', 'scheduled')
+      .gt('kickoff_at', now)
+      .is('odds_locked_at', null);
+    if (matchesError) throw matchesError;
+
+    const matches = (data ?? []) as DbMatch[];
+    if (matches.length === 0) {
+      const summary = { skipped: true, reason: 'all_known_matches_locked', requestsUsed: 0 };
+      if (run?.id) await supabase.from('sync_runs').update({ success: true, completed_at: new Date().toISOString(), summary }).eq('id', run.id);
+      return json({ success: true, ...summary });
+    }
+
     const url = new URL(`${ODDS_API_BASE}/sports/${SPORT_KEY}/odds`);
     url.searchParams.set('apiKey', oddsApiKey);
     url.searchParams.set('regions', 'eu');
@@ -143,15 +160,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const events = await response.json() as OddsEvent[];
-    const now = new Date().toISOString();
-    const { data, error: matchesError } = await supabase
-      .from('matches')
-      .select('id, home_team, away_team, kickoff_at')
-      .eq('status', 'scheduled')
-      .gt('kickoff_at', now);
-    if (matchesError) throw matchesError;
-
-    const matches = (data ?? []) as DbMatch[];
     let updated = 0;
     let unmatched = 0;
 
@@ -165,19 +173,29 @@ Deno.serve(async (req: Request) => {
 
       const orientationMatches = normalizeTeam(match.home_team) === normalizeTeam(event.home_team);
       const [providerHome, draw, providerAway] = odds;
+      const lockedAt = new Date().toISOString();
+      const home = orientationMatches ? providerHome : providerAway;
+      const away = orientationMatches ? providerAway : providerHome;
+      const source = `the_odds_api_median_${event.bookmakers.length}`;
       const { error } = await supabase
         .from('matches')
         .update({
-          odds_home: orientationMatches ? providerHome : providerAway,
+          odds_home: home,
           odds_draw: draw,
-          odds_away: orientationMatches ? providerAway : providerHome,
-          odds_source: `the_odds_api_median_${event.bookmakers.length}`,
-          odds_updated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          odds_away: away,
+          odds_source: source,
+          odds_updated_at: lockedAt,
+          locked_odds_home: home,
+          locked_odds_draw: draw,
+          locked_odds_away: away,
+          locked_odds_source: source,
+          odds_locked_at: lockedAt,
+          updated_at: lockedAt,
         })
         .eq('id', match.id)
         .eq('status', 'scheduled')
-        .gt('kickoff_at', now);
+        .gt('kickoff_at', now)
+        .is('odds_locked_at', null);
       if (error) throw error;
       updated += 1;
     }

@@ -36,6 +36,11 @@ export type Match = {
   odds_away: number;
   odds_source: string;
   odds_updated_at: string | null;
+  locked_odds_home: number | null;
+  locked_odds_draw: number | null;
+  locked_odds_away: number | null;
+  locked_odds_source: string | null;
+  odds_locked_at: string | null;
   exact_score_enabled: boolean;
   venue: string | null;
   api_match_id: string | null;
